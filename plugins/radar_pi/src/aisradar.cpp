@@ -686,19 +686,15 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
         if (t->Range_NM>0.0 && t->Brg>0.0) {
             //t->MMSI, Name, t->Range_NM, t->Brg, t->COG, t->SOG, t->Class, t->alarm_state, t->ROTAIS
             std::pair<int, int> the_key(t->MMSI, t->Class);
-            if (t->MID!=5 && t->MMSI){
+            if (t->MMSI){
 
                 Now_Ais_Target[the_key] = *t;
+
                 if (Ais_Target.find(the_key)!=Ais_Target.end()){
-                    // 去除utc时间相同的目标
-                    if( t->Utc_hour!=Ais_Target[the_key].back().Utc_hour
-                    ||t->Utc_min!=Ais_Target[the_key].back().Utc_min
-                    ||t->Utc_sec!=Ais_Target[the_key].back().Utc_sec){
-                        Ais_Target[the_key].push_back(*t);
-                    }
-                    if (Ais_Target[the_key].size()>10){
+                    if (Ais_Target[the_key].size()>=10){
                         Ais_Target[the_key].pop_front();
                     }
+                    Ais_Target[the_key].push_back(*t);
                 }
                 else{
                     std::list<PlugIn_AIS_Target> newlist;
@@ -709,23 +705,12 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
         }
     }
     
-    unsigned N = Ais_Target.size();
-    int size_target[N];
-    for (decltype(N) i = 0; i<N; ++i){
-        size_target[i] = 0;
-    }
     // if () //队列长度判断 距离本船距离 大于这一距离的船舶不需要考虑
     for (auto ais_it = Ais_Target.begin(); ais_it!=Ais_Target.end(); ++ais_it){
-        
-        if (size_target[distance(Ais_Target.begin(), ais_it)] == 1){
-            std::cout << distance(Ais_Target.begin(), ais_it) << "当前目标已经融合\t";
-            continue; //当前目标已经融合
-        }
-        
         auto ais_it_c = ais_it;
         while(++ais_it_c!=Ais_Target.end()){
-            if (ais_it->first.second == ais_it_c->first.second || size_target[distance(Ais_Target.begin(), ais_it_c)]==1){
-                continue; // 同类目标 或者 已经融合目标
+            if (ais_it->first.second == ais_it_c->first.second){
+                continue; // 同类目标
             }
             else{
                 //计算Radar_a和AIS_b的关联度
@@ -758,17 +743,9 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
                 if( m > 8 ){
                     // 航迹最后一个点 融合
                     std::cout << "Erase fusion point:" << std::endl;
-                    size_target[std::distance(Ais_Target.begin(), ais_it)] = 1;
-                    size_target[std::distance(Ais_Target.begin(), ais_it_c)] = 1;
                     std::cout << "Type:" << Now_Ais_Target[ais_it->first].Class << "\tName:" << Now_Ais_Target[ais_it->first].ShipName << Now_Ais_Target[ais_it->first].MMSI << std::endl;
                     std::cout << "Type:" << Now_Ais_Target[ais_it_c->first].Class << "\tName:" << Now_Ais_Target[ais_it_c->first].ShipName << Now_Ais_Target[ais_it_c->first].MMSI << std::endl;
-                    // strcat(Now_Ais_Target[ais_it_c->first].ShipName, Now_Ais_Target[ais_it->first].ShipName);
-                    
-                    char buf[43];
-                    strcpy(buf, Now_Ais_Target[ais_it_c->first].ShipName);
-                    strcat(buf, Now_Ais_Target[ais_it->first].ShipName);
-                    
-                    
+
                     Now_Ais_Target.erase(ais_it->first);
                     //Now_Ais_Target.erase(ais_it_c->first);
                     
@@ -824,7 +801,6 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
     //     }
     // }
 }
-
 
 
 void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius) {
