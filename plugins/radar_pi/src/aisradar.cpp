@@ -58,7 +58,8 @@ enum    Ids { cbRangeId = 10001,
                 connectOptionLinkId,        // option button
                 tmTTSId,                    // TTS timer
                 soundPlayId,                // open button
-
+                // id for socket
+                SOCKET_ID
 };
 
 static const int RESTART  = -1;
@@ -83,6 +84,31 @@ double a32 = (a3*a3) / (a3*a3 + r3*r3);
 double a41 = (r4*r4) / (a4*a4 + r4*r4);
 double a42 = (a4*a4) / (a4*a4 + r4*r4);
 
+#include <sys/wait.h> // for WEXITSTATUS & friends
+
+static int do_play(const char* cmd)
+{
+    char buff[1024];
+
+    snprintf(buff, sizeof( buff ), "espeak-ng  '%s' -s 20 -p 15 -v zh", cmd);
+
+    int status = system(buff);
+    if (status == -1) {
+        wxLogWarning("Cannot fork process running %s", buff);
+        return -1;
+    }
+    if (WIFEXITED(status)) {
+        status = WEXITSTATUS(status);
+        if (status != 0) {
+            wxLogWarning("Exit code %d from command %s",
+                status, buff);
+        }
+    } else {
+        wxLogWarning("Strange return code %d (0x%x) running %s",
+                     status, status, buff);
+    }
+    return status;
+}
 
 void executeCMD(const char *cmd, char *result)   
 {   
@@ -110,9 +136,9 @@ void executeCMD(const char *cmd, char *result)
 //---------------------------------------------------------------------------------------
 //          Radar Dialog Implementation
 //---------------------------------------------------------------------------------------
-IMPLEMENT_CLASS ( RadarFrame, wxDialog )
+IMPLEMENT_CLASS ( RadarFrame, wxFrame )
 
-BEGIN_EVENT_TABLE ( RadarFrame, wxDialog )
+BEGIN_EVENT_TABLE ( RadarFrame, wxFrame )
 
     EVT_CLOSE    ( RadarFrame::OnClose )
     EVT_MOVE     ( RadarFrame::OnMove )
@@ -125,6 +151,7 @@ BEGIN_EVENT_TABLE ( RadarFrame, wxDialog )
     EVT_TIMER    ( tmTTSId, RadarFrame::TTSPlaySoundTimer )
     EVT_BUTTON   ( soundPlayId, RadarFrame::TTSPlaySound )
     EVT_BUTTON   ( connectOptionLinkId, RadarFrame::SetConnectOption )
+    EVT_SOCKET   ( SOCKET_ID,     RadarFrame::OnSocketEvent) 
 END_EVENT_TABLE()
 
 RadarFrame::RadarFrame() 
@@ -161,7 +188,7 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     pPlugIn = ppi;
     long wstyle = wxDEFAULT_FRAME_STYLE;
     m_pViewState = new ViewState(pos, size);
-    if ( !wxDialog::Create ( parent, id, caption, pos, m_pViewState->GetWindowSize(), wstyle ) ) {
+    if ( !wxFrame::Create ( parent, id, caption, pos, m_pViewState->GetWindowSize(), wstyle ) ) {
         return false;
     }
 
@@ -227,9 +254,10 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     wxStaticText *m_warningInstructionLabel = new wxStaticText(panel, wxID_ANY, wxT("Advice:"), wxDefaultPosition, wxSize(-1,-1), 0);
     m_warningInstructionLabel->Wrap(-1);
     sbSizer1->Add( m_warningInstructionLabel, 0, wxALIGN_CENTER, 5 );
-    m_textCtrl1 = new wxTextCtrl( panel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( 300,100 ), wxTE_MULTILINE );
+    m_textCtrl1 = new wxTextCtrl( panel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( 300,100 ), wxTE_MULTILINE | wxTE_READONLY);
     sbSizer1->Add( m_textCtrl1, 1, wxALIGN_CENTER|wxALL|wxEXPAND, 5 );
-    
+    // delete wxLog::SetActiveTarget(new wxLogTextCtrl(m_textCtrl1));
+
     wxBoxSizer *m_buttonBox;
     m_buttonBox = new wxBoxSizer( wxVERTICAL );
     
@@ -247,9 +275,28 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     m_Timer->Start(2000);
 
     m_Timer_TTS = new wxTimer(this, tmTTSId);
-    m_Timer_TTS->Start(3000);
+    m_Timer_TTS->Start(6000);
 
     vbox->MyFit(this);
+
+    // Create the socket
+    m_sock = new wxSocketClient();
+
+    // Setup the event handler and subscribe to most events
+    m_sock->SetEventHandler(*this, SOCKET_ID);
+    m_sock->SetNotify(wxSOCKET_CONNECTION_FLAG |
+                        wxSOCKET_INPUT_FLAG |
+                        wxSOCKET_LOST_FLAG);
+    m_sock->Notify(true);
+
+    m_busy = false;
+
+#if wxUSE_STATUSBAR
+    // Status bar
+    CreateStatusBar(2);
+#endif // wxUSE_STATUSBAR
+
+    UpdateStatusBar();
 
     return true;
 }
@@ -265,7 +312,10 @@ void RadarFrame::SetColourScheme(PI_ColorScheme cs) {
 void RadarFrame::OnClose ( wxCloseEvent& event ) {
     // Stop timer if still running
     m_Timer->Stop();
+    m_Timer_TTS->Stop();
     delete m_Timer;
+    delete m_Timer_TTS;
+    delete m_sock;
     
     // Save window size
     pPlugIn->SetRadarFrameX(m_pViewState->GetPos().x);
@@ -355,15 +405,154 @@ void RadarFrame::paintEvent(wxPaintEvent & event) {
     event.Skip();
 }
 
+/**
+ * @name: 根据IP地址和端口号建立socket连接，通过按键m_ConnectOptionButton事件触发
+ * @msg:  Open session - 打开连接  Close session - 关闭连接
+ * @param {type} 
+ * @return: 
+ */
 void RadarFrame::SetConnectOption( wxCommandEvent& event ){
-    std::cout << "open Option frame" << std::endl;
-    if (true){
-        // 如果设置通信参数完整（包括ip地址、port），则将m_soundButton置为Enable。
-        m_soundButton->Enable();
-    }
-    else{
+    if (!m_sock->IsConnected() && m_ConnectOptionButton->GetLabel() == "Open session" ) {
+        OpenConnection(wxSockAddress::IPV4);
+        // Wait until the request completes or until we decide to give up
+        bool waitmore = true;
+        while ( !m_sock->WaitOnConnect(-1, 3000) && waitmore )
+        {
+            
+        }
+        if (m_sock->IsConnected()) {
+            m_ConnectOptionButton->SetLabel("Close session");
+            m_soundButton->Enable();
+            UpdateStatusBar();
+        }
         
     }
+    else if ( m_sock->IsConnected() && m_ConnectOptionButton->GetLabel() == "Close session" ) {
+        m_sock->Close();
+        m_ConnectOptionButton->SetLabel("Open session");
+        UpdateStatusBar();
+        m_soundButton->SetLabel("Open");
+        m_soundButton->Disable();
+    }
+    else{
+        SetStatusText("State : 0", 1);
+    }
+}
+
+/**
+ * @name: 建立连接
+ * @msg: 
+ * @param {type} 
+ * @return: 
+ */
+void RadarFrame::OpenConnection(wxSockAddress::Family family)
+{
+    wxUnusedVar(family); // unused in !wxUSE_IPV6 case
+
+    wxIPaddress * addr;
+    wxIPV4address addr4;
+    addr = &addr4;
+#if wxUSE_IPV6
+    wxIPV6address addr6;
+    if ( family == wxSockAddress::IPV6 )
+        addr = &addr6;
+    else
+#endif
+    // Ask user for server address
+    wxString hostname = wxGetTextFromUser(
+        _("Enter the address of the wxSocket demo server:"),
+        _("Connect ..."),
+        _("localhost"));
+    if ( hostname.empty() )
+        return;
+
+    addr->Hostname(hostname);
+    addr->Service(3000);
+
+    // we connect asynchronously and will get a wxSOCKET_CONNECTION event when
+    // the connection is really established
+    //
+    // if you want to make sure that connection is established right here you
+    // could call WaitOnConnect(timeout) instead
+    // wxLogMessage("Trying to connect to %s:%d", hostname, addr->Service());
+
+    m_sock->Connect(*addr, false);
+}
+
+void RadarFrame::OnSocketEvent(wxSocketEvent& event)
+{
+    switch ( event.GetSocketEvent() )
+    {
+        case wxSOCKET_INPUT:
+            wxLogMessage("Input available on the socket");
+            break;
+
+        case wxSOCKET_LOST:
+            wxLogMessage("Socket connection was unexpectedly lost.");
+            UpdateStatusBar();
+            break;
+
+        case wxSOCKET_CONNECTION:
+            wxLogMessage("... socket is now connected.");
+            UpdateStatusBar();
+            break;
+
+        default:
+            wxLogMessage("Unknown socket event!!!");
+            break;
+    }
+}
+
+void RadarFrame::OnTest(){
+    // Disable socket menu entries (exception: Close Session)
+    m_busy = true;
+    UpdateStatusBar();
+
+    // Tell the server which test we are running
+    unsigned char c = 0xCE;
+    m_sock->Write(&c, 1);
+
+    // Here we use ReadMsg and WriteMsg to send messages with
+    // a header with size information. Also, the reception is
+    // event triggered, so we test input events as well.
+    //
+    // We need to set no flags here (ReadMsg and WriteMsg are
+    // not affected by flags)
+
+    m_sock->SetFlags(wxSOCKET_WAITALL);
+
+    wxString s = "data";
+    {
+        // TODO:本部分发送数据内容（数据备选模式：wxString,json,xml）
+        // 如果没有接入AIS或者其他设备，发送某种状态码
+    }
+
+    const wxScopedCharBuffer msg1(s.utf8_str());
+    size_t len  = wxStrlen(msg1) + 1;
+    wxCharBuffer msg2(wxStrlen(msg1));
+    wxCharBuffer msgState[2] = {"1","2"};
+    m_sock->WriteMsg(msg1, len);
+
+    // Wait until data available (will also return if the connection is lost)
+    m_sock->WaitForRead(2);
+
+    if (m_sock->IsData())
+    {
+        m_sock->ReadMsg(msg2.data(), len);
+
+        if (strcmp(msgState[0],msg2)){
+            // 默认无返回数据，或者返回数据为空
+        }
+        else{
+            // 存在返回船舶控制指令，采用espeak(TTS)文本语音指令播放指令语音内容
+            do_play(msg2);
+        }
+    }
+    else
+        SetStatusText("Timeout ! Test 2 failed.", 1);
+
+    m_busy = false;
+    // UpdateStatusBar();
 }
 
 void RadarFrame::TTSPlaySound( wxCommandEvent &event) {
@@ -375,27 +564,65 @@ void RadarFrame::TTSPlaySound( wxCommandEvent &event) {
     }
 }
 
+void RadarFrame::Connect(){
+    m_Timer_TTS->Stop();
+    OnTest();
+    m_Timer_TTS->Start(RESTART);
+}
+
 void RadarFrame::TTSPlaySoundTimer( wxTimerEvent& event ) {
     //std::cout << "try send xml data" << std::endl;
     
     if(m_soundButton->GetLabel() == "Close"){
-        //std::cout << "play sound function is open" << std::endl;
+        // std::cout << "play sound function is open" << std::endl;
         // function 
-        {
-
+        // 如果socket连接已经创建，发送融合后船舶位置数据，并且接收避碰算法处理结果，包含状态码和内容
+        if (m_sock->IsConnected() ) {
+           thread connectThread(&RadarFrame::Connect, this); // 线程实现
+           connectThread.detach();
         }
-
+        
         // TTS(Text to Speech)是通过命令行线程实现，需要提前配置espeak-ng以及其中文发音库.
-        const char *input = "espeak-ng  '警告' -s 10 -p 15 -v zh";
-        char *result;
-        std::thread t(executeCMD, input, result);
-        t.detach();
+        // const char *input = "espeak-ng  'TTS(Text to Speech)是通过命令行线程实现，需要提前配置espeak-ng以及其中文发音库.' -s 10 -p 15 -v zh";
+        // char *result;
+        // std::thread t(executeCMD, input, result);
+        // t.detach();
     }
     else{
         // std::cout << "play sound function is close" << std::endl;
         // not connect with the alg model
+        
     }
 }
+
+void RadarFrame::UpdateStatusBar()
+{
+#if wxUSE_STATUSBAR
+    wxString s;
+
+    if (!m_sock->IsConnected())
+    {
+        s = "Not connected";
+        m_ConnectOptionButton->SetLabel("Open session");
+        m_soundButton->SetLabel("Open");
+        m_soundButton->Disable();
+    }
+    else
+    {
+#if wxUSE_IPV6
+        wxIPV6address addr;
+#else
+        wxIPV4address addr;
+#endif
+
+        m_sock->GetPeer(addr);
+        s.Printf("%s : %d", addr.Hostname(), addr.Service());
+    }
+
+    SetStatusText(s, 1);
+#endif // wxUSE_STATUSBAR
+}
+
 
 void RadarFrame::render(wxDC& dc)     {
     m_Timer->Start(RESTART);
@@ -459,15 +686,19 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
         if (t->Range_NM>0.0 && t->Brg>0.0) {
             //t->MMSI, Name, t->Range_NM, t->Brg, t->COG, t->SOG, t->Class, t->alarm_state, t->ROTAIS
             std::pair<int, int> the_key(t->MMSI, t->Class);
-            if (t->MMSI){
+            if (t->MID!=5 && t->MMSI){
 
                 Now_Ais_Target[the_key] = *t;
-
                 if (Ais_Target.find(the_key)!=Ais_Target.end()){
-                    if (Ais_Target[the_key].size()>=10){
+                    // 去除utc时间相同的目标
+                    if( t->Utc_hour!=Ais_Target[the_key].back().Utc_hour
+                    ||t->Utc_min!=Ais_Target[the_key].back().Utc_min
+                    ||t->Utc_sec!=Ais_Target[the_key].back().Utc_sec){
+                        Ais_Target[the_key].push_back(*t);
+                    }
+                    if (Ais_Target[the_key].size()>10){
                         Ais_Target[the_key].pop_front();
                     }
-                    Ais_Target[the_key].push_back(*t);
                 }
                 else{
                     std::list<PlugIn_AIS_Target> newlist;
@@ -478,12 +709,23 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
         }
     }
     
+    unsigned N = Ais_Target.size();
+    int size_target[N];
+    for (decltype(N) i = 0; i<N; ++i){
+        size_target[i] = 0;
+    }
     // if () //队列长度判断 距离本船距离 大于这一距离的船舶不需要考虑
     for (auto ais_it = Ais_Target.begin(); ais_it!=Ais_Target.end(); ++ais_it){
+        
+        if (size_target[distance(Ais_Target.begin(), ais_it)] == 1){
+            std::cout << distance(Ais_Target.begin(), ais_it) << "当前目标已经融合\t";
+            continue; //当前目标已经融合
+        }
+        
         auto ais_it_c = ais_it;
         while(++ais_it_c!=Ais_Target.end()){
-            if (ais_it->first.second == ais_it_c->first.second){
-                continue; // 同类目标
+            if (ais_it->first.second == ais_it_c->first.second || size_target[distance(Ais_Target.begin(), ais_it_c)]==1){
+                continue; // 同类目标 或者 已经融合目标
             }
             else{
                 //计算Radar_a和AIS_b的关联度
@@ -516,9 +758,17 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
                 if( m > 8 ){
                     // 航迹最后一个点 融合
                     std::cout << "Erase fusion point:" << std::endl;
+                    size_target[std::distance(Ais_Target.begin(), ais_it)] = 1;
+                    size_target[std::distance(Ais_Target.begin(), ais_it_c)] = 1;
                     std::cout << "Type:" << Now_Ais_Target[ais_it->first].Class << "\tName:" << Now_Ais_Target[ais_it->first].ShipName << Now_Ais_Target[ais_it->first].MMSI << std::endl;
                     std::cout << "Type:" << Now_Ais_Target[ais_it_c->first].Class << "\tName:" << Now_Ais_Target[ais_it_c->first].ShipName << Now_Ais_Target[ais_it_c->first].MMSI << std::endl;
-
+                    // strcat(Now_Ais_Target[ais_it_c->first].ShipName, Now_Ais_Target[ais_it->first].ShipName);
+                    
+                    char buf[43];
+                    strcpy(buf, Now_Ais_Target[ais_it_c->first].ShipName);
+                    strcat(buf, Now_Ais_Target[ais_it->first].ShipName);
+                    
+                    
                     Now_Ais_Target.erase(ais_it->first);
                     //Now_Ais_Target.erase(ais_it_c->first);
                     
@@ -574,6 +824,7 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
     //     }
     // }
 }
+
 
 
 void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius) {

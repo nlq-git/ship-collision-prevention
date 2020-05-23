@@ -187,6 +187,7 @@ enum plugin_ais_alarm_type
 class PlugIn_AIS_Target
 {
       public:
+            int                       MID;      //target message type
 
             int                       MMSI;
             int                       Class;
@@ -209,6 +210,12 @@ class PlugIn_AIS_Target
             bool                      bCPA_Valid;
             double                    TCPA;                     // Minutes
             double                    CPA;                      // Nautical Miles
+
+    //      时间记录
+            int                       Utc_hour;
+            int                       Utc_min;
+            int                       Utc_sec;
+            wxString                  Date_string;
 
             plugin_ais_alarm_type     alarm_state;
 };

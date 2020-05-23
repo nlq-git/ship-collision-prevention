@@ -32,6 +32,10 @@ SET(SRC_AISRADAR
       src/Canvas.cpp
       src/Target.h
       src/Target.cpp
+      # src/FusionEKF.cpp
+      # src/kalman/kalman_filter.cpp
+      # src/kalman/main.cpp
+      # src/kalman/tools.cpp
     )
 ADD_LIBRARY(${PACKAGE_NAME} SHARED ${SRC_AISRADAR})
 

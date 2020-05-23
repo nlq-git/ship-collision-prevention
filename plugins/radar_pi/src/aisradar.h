@@ -29,6 +29,7 @@
 #ifndef _RADAR_H_
 #define _RADAR_H_
 
+#include "wx/socket.h"
 #include "wx/wxprec.h"
 #include "wx/dcbuffer.h"
 #include "Target.h"
@@ -86,23 +87,9 @@ private:
 };
 
 //----------------------------------------------------------------------------------------------------------
-//    Connection Set Dialog
-//----------------------------------------------------------------------------------------------------------
-class ConnectionFrame: public wxDialog
-{
-    DECLARE_CLASS( ConnectionFrame )
-    DECLARE_EVENT_TABLE()
-public:
-    
-private:
-    
-
-};
-
-//----------------------------------------------------------------------------------------------------------
 //    RADAR View Specification
 //----------------------------------------------------------------------------------------------------------
-class RadarFrame: public wxDialog
+class RadarFrame: public wxFrame
 {
     DECLARE_CLASS( RadarFrame )
     DECLARE_EVENT_TABLE()
@@ -140,7 +127,14 @@ private:
     void ShipContorl(); // 航运学院
 
     //    Data
-    
+    // convenience functions
+    void OnOpenConnection(wxCommandEvent& event);
+    void OnTest();
+    void Connect();
+    void OnSocketEvent(wxSocketEvent& event);
+    void UpdateStatusBar();
+    void OpenConnection(wxSockAddress::Family family);
+
 
     wxWindow               *pParent;
     aisradar_pi            *pPlugIn;
@@ -160,6 +154,10 @@ private:
     wxTextCtrl             *m_textCtrl1;
     wxButton               *m_soundButton;
     wxButton               *m_ConnectOptionButton;
+
+    // TCP socket
+    wxSocketClient         *m_sock;
+    bool                    m_busy;
 };
 
 
