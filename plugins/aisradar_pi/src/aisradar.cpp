@@ -145,6 +145,25 @@ void executeCMD(const char *cmd, char *result)
         printf("popen %s error\n", ps);   
     }   
 }
+vector<wxString> split(const wxString& str, const wxString& delim) {
+	vector<wxString> res;
+	if("" == str) return res;
+	//先将要切割的字符串从string类型转换为char*类型
+	char * strs = new char[str.length() + 1] ; //不要忘了
+	strcpy(strs, str.c_str()); 
+ 
+	char * d = new char[delim.length() + 1];
+	strcpy(d, delim.c_str());
+ 
+	char *p = strtok(strs, d);
+	while(p) {
+		wxString s = p; //分割得到的字符串转换为string类型
+		res.push_back(s); //存入结果数组
+		p = strtok(NULL, d);
+	}
+ 
+	return res;
+}
 
 //---------------------------------------------------------------------------------------
 //          Radar Dialog Implementation
@@ -807,11 +826,11 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
 
     // Read the size
     unsigned char len;
-    sock->Read(&len, 1);
-    wxCharBuffer buf(len);
+    // sock->Read(&len, 1);
+    wxCharBuffer buf(1024);
 
     // Read the data
-    sock->Read(buf.data(), len);
+    // sock->Read(buf.data(), len);
     wxLogMessage("Got the data, sending it back");
 
     wxString data;
@@ -826,54 +845,80 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
     
     for (auto it = current_targets->begin(); it != current_targets->end(); ++it )
     {
-        
-        
-        //m_textCtrl1->AppendText(wxString::Format(wxT("---MMSI:%i"),td->MMSI)+wxString::Format(wxT("\tLon:%f"),td->Lon)+wxString::Format(wxT("\tLat:%f"),td->Lat));
-        //m_textCtrl1->AppendText(_("\n"));
-
-        // data += wxString::Format(wxT("$!NDAR:%i-"),(*it)->MMSI)
-        //         +wxString::Format(wxT("%f-"),(*it)->Lon)
-        //         +wxString::Format(wxT("%f-"),(*it)->Lat)
-        //         +wxString::Format(wxT("%f-"),(((*it)->SOG)*1852/3600))
-        //         +wxString::Format(wxT("%f\r\n"),(*it)->COG);
-        data = "$!NDAR:12,12,12,12,12\r\n";
-        
+        data += wxString::Format(wxT("$!NDAR:%i-"),(*it)->MMSI)
+                +wxString::Format(wxT("%f-"),(*it)->Lon)
+                +wxString::Format(wxT("%f-"),(*it)->Lat)
+                +wxString::Format(wxT("%f-"),(((*it)->SOG)*1852/3600))
+                +wxString::Format(wxT("%f\r\n"),(*it)->COG);
+        //data = "$!NDAR:12,12,12,12,12\r\n";
     }
     buf = data.ToUTF8();
-    len = strlen(buf);
-    sock->Write(&len, 1);
+    // len = strlen(buf);
+    // sock->Write(&len, 1);
     sock->Write(buf, strlen(buf));
 }
 
 void RadarFrame::GetClientResult(wxSocketBase *sock)
 {
-    char buf[4096];
-
     TestLogger logtest("GetClientResult");
 
-    // We don't need to set flags because ReadMsg and WriteMsg
-    // are not affected by them anyway.
-
     // Read the message
-    wxUint32 len = sock->ReadMsg(buf, sizeof(buf)).LastCount();
-    if ( !len )
-    {
-        wxLogError("Failed to read message.");
-        return;
+    unsigned char len;
+    sock->Read(&len, 2);
+    wxCharBuffer buf(len);
+    sock->Read(buf.data(), len);
+    
+    if (buf.data()){
+        wxString sock_buffer;
+        sock_buffer = wxString::FromUTF8(buf.data());
+        {
+            m_textCtrl1->Clear();
+            // 处理张梁算法结果
+            // "2-10-2-R-M-L
+            std::vector<wxString> res = split(sock_buffer, wxT("-"));
+            int i = 1; wxString s;
+            
+            // TODO:改成表格显示
+            
+            if (res[0] != "0"){
+                m_textCtrl1->AppendText(wxT("危险船舶MMSI："));
+                for (; i<=atoi(res[0].c_str()); i++){
+                    m_textCtrl1->AppendText("|");
+                    m_textCtrl1->AppendText(res[i]);
+                    m_textCtrl1->AppendText("|");
+                }
+                m_textCtrl1->AppendText("\n");
+                s = wxT("预警操作：");
+                s.Append(_("  warm_daner->"));s.Append(res[i++]);
+                s.Append(_("  support->"));s.Append(res[i++]);
+                s.Append(_("  warm_yaw->"));s.Append(res[i++]);
+                m_textCtrl1->AppendText(s);
+            }
+            else{
+                m_textCtrl1->AppendText(wxT("------无危险船舶MMSI-----\n"));
+                s = wxT("预警操作：");
+                s.Append(_("  warm_daner->"));s.Append(res[i++]);
+                s.Append(_("  support->"));s.Append(res[i++]);
+                s.Append(_("  warm_yaw->"));s.Append(res[i++]);    
+                m_textCtrl1->AppendText(s);   
+            }
+        }
+        wxString s = "Get Message and Prase Right";
+        unsigned int bufflen = s.size();
+        wxCharBuffer buff(bufflen);
+        buff = s.ToUTF8();
+        // Write it back
+        // sock->Write(&bufflen, 1);
+        sock->Write(buff, bufflen);
+        return ;
     }
-
-    wxLogMessage("Got \"%s\" from client.", wxString::FromUTF8(buf, len));
-    wxLogMessage("Sending the data back");
-    {
-        // 处理张梁算法结果
-
-    }
-    wxString s = "Get Message and Prase Right";
-    unsigned int bufflen = s.size()+1;
+    
+    wxString s = "Something wrong!";
+    unsigned int bufflen = s.size();
     wxCharBuffer buff(bufflen);
     buff = s.ToUTF8();
     // Write it back
-    sock->Write(&bufflen, 1);
+    // sock->Write(&bufflen, 1);
     sock->Write(buff, bufflen);
 }
 
