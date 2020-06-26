@@ -864,7 +864,10 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
 
     wxLogMessage("Got \"%s\" from client.", wxString::FromUTF8(buf, len));
     wxLogMessage("Sending the data back");
-    
+    {
+        // 处理张梁算法结果
+
+    }
     wxString s = "Get Message and Prase Right";
     unsigned int bufflen = s.size()+1;
     wxCharBuffer buff(bufflen);
@@ -876,25 +879,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
 
 void RadarFrame::Test3(wxSocketBase *sock)
 {
-    TestLogger logtest("Test 3");
-
-    // This test is similar to the first one, but the len is
-    // expressed in kbytes - this tests large data transfers.
-
-    sock->SetFlags(wxSOCKET_WAITALL);
-
-    // Read the size
-    unsigned char len;
-    sock->Read(&len, 1);
-    wxCharBuffer buf(len*1024);
-
-    // Read the data
-    sock->Read(buf.data(), len * 1024);
-    wxLogMessage("Got the data, sending it back");
-    // buf = "警告";
-    // Write it back
-    buf = "前方船舶（南京号）距离本船500米，有碰撞危险，向右转向10度，减速";
-    sock->Write(buf, len * 1024);
+    
 }
 #endif
 
@@ -945,7 +930,7 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
     PlugIn_AIS_Target *t;
     ArrayOfPlugIn_AIS_Targets::iterator it;
     wxString  Name;
-
+#if 0
     // Set generic details for all targets
     dt.SetCanvas(center,radius, m_BgColour);
     dt.SetNavDetails(RangeData[m_pRange->GetSelection()], offset, m_ShowCogArrows, m_CogArrowMinutes);
@@ -1085,24 +1070,25 @@ void RadarFrame::renderBoats(wxDC& dc, wxPoint &center, wxSize &size, int radius
             }
         }
     }
-
-    // for( it = (*AisTargets).begin(); it != (*AisTargets).end(); ++it ) {
-    //     t        = *it;
-    //     // Only display well defined targets
-    //     if (t->Range_NM>0.0 && t->Brg>0.0) {
-    //         if (m_ShowMoored 
-    //             || t->Class == BASE_STATION
-    //             ||(!m_ShowMoored && t->SOG > m_MooredSpeed)
-    //         ) {
-    //             Name     = wxString::From8BitData(t->ShipName);
-    //             TrimAisField(&Name);
-    //             dt.SetState(t->MMSI, Name, t->Range_NM, t->Brg, t->COG, t->SOG, 
-    //                 t->Class, t->alarm_state, t->ROTAIS
-    //             );
-    //             dt.Render(dc);
-    //         }
-    //     }
-    // }
+#else
+    for( it = (*AisTargets).begin(); it != (*AisTargets).end(); ++it ) {
+        t        = *it;
+        // Only display well defined targets
+        if (t->Range_NM>0.0 && t->Brg>0.0) {
+            if (m_ShowMoored 
+                || t->Class == BASE_STATION
+                ||(!m_ShowMoored && t->SOG > m_MooredSpeed)
+            ) {
+                Name     = wxString::From8BitData(t->ShipName);
+                TrimAisField(&Name);
+                dt.SetState(t->MMSI, Name, t->Range_NM, t->Brg, t->COG, t->SOG, 
+                    t->Class, t->alarm_state, t->ROTAIS
+                );
+                dt.Render(dc);
+            }
+        }
+    }
+#endif
 }
 
 
