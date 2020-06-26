@@ -4988,7 +4988,7 @@ void opencpn_plugin_117::SetActiveLegInfo(Plugin_Active_Leg_Info &leg_info)
 PlugIn_AIS_Target *Create_PI_AIS_Target(AIS_Target_Data *ptarget)
 {
     PlugIn_AIS_Target *pret = new PlugIn_AIS_Target;
-
+    pret->MID =             ptarget->MID;
     pret->MMSI =            ptarget->MMSI;
     pret->Class =           ptarget->Class;
     pret->NavStatus =       ptarget->NavStatus;
@@ -5008,6 +5008,11 @@ PlugIn_AIS_Target *Create_PI_AIS_Target(AIS_Target_Data *ptarget)
     pret->bCPA_Valid =      ptarget->bCPA_Valid;
     pret->TCPA =            ptarget->TCPA;                     // Minutes
     pret->CPA =             ptarget->CPA;                      // Nautical Miles
+
+    pret->Utc_hour =        ptarget->m_utc_hour;
+    pret->Utc_min =        ptarget->m_utc_min;
+    pret->Utc_sec =        ptarget->m_utc_sec;
+    pret->Date_string =        ptarget->m_date_string;   
 
     pret->alarm_state =     (plugin_ais_alarm_type)ptarget->n_alert_state;
 

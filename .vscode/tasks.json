@@ -23,7 +23,8 @@
             },
             "type": "shell",
             "command": "make",
-            "args": []
+            "args": [],
+            "problemMatcher": []
         }
     ]
 }

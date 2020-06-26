@@ -674,8 +674,8 @@ void OCPNPlatform::Initialize_2( void )
 void OCPNPlatform::Initialize_3( void )
 {
     
-    bool bcapable = IsGLCapable();
-
+     bool bcapable = IsGLCapable();
+    //bool bcapable = false;
 #ifdef ocpnARM         // Boot arm* platforms (meaning rPI) without OpenGL on first run
     bcapable = false;
 #endif    
