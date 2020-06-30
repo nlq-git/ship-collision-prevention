@@ -824,10 +824,7 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
 
     sock->SetFlags(wxSOCKET_WAITALL);
 
-    // Read the size
-    unsigned char len;
-    // sock->Read(&len, 1);
-    wxCharBuffer buf(1024);
+    
 
     // Read the data
     // sock->Read(buf.data(), len);
@@ -852,10 +849,17 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
                 +wxString::Format(wxT("%f\r\n"),(*it)->COG);
         //data = "$!NDAR:12,12,12,12,12\r\n";
     }
+    for (int k = 0; k< 50; k++) 
+        data += "$!NDAR:12,12,12,12,12\r\n";
+    // Read the size
+    
+    // sock->Read(&len, 1);
+    
+    unsigned int bufflen = data.size();
+    wxCharBuffer buf(bufflen);
     buf = data.ToUTF8();
-    // len = strlen(buf);
-    // sock->Write(&len, 1);
-    sock->Write(buf, strlen(buf));
+    sock->Write(&bufflen, sizeof(bufflen));
+    sock->Write(buf, bufflen);
 }
 
 void RadarFrame::GetClientResult(wxSocketBase *sock)
@@ -864,7 +868,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
 
     // Read the message
     unsigned char len;
-    sock->Read(&len, 2);
+    sock->Read(&len, 1);
     wxCharBuffer buf(len);
     sock->Read(buf.data(), len);
     
@@ -908,7 +912,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
         wxCharBuffer buff(bufflen);
         buff = s.ToUTF8();
         // Write it back
-        // sock->Write(&bufflen, 1);
+        sock->Write(&bufflen, 1);
         sock->Write(buff, bufflen);
         return ;
     }
@@ -918,7 +922,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
     wxCharBuffer buff(bufflen);
     buff = s.ToUTF8();
     // Write it back
-    // sock->Write(&bufflen, 1);
+    sock->Write(&bufflen, sizeof(bufflen));
     sock->Write(buff, bufflen);
 }
 
