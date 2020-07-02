@@ -831,25 +831,25 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
     wxLogMessage("Got the data, sending it back");
 
     wxString data;
-    data += wxString::Format(wxT("$!NDOS:OwnShip-%f-"), gLon)
-            +wxString::Format(wxT("%f-"),gLat)
-            +wxString::Format(wxT("%f-"),((gSog)*1852/3600))
-            +wxString::Format(wxT("%f-"), gCog)
-            +wxString::Format(wxT("%f-"), g_n_ownship_length_meters)
+    data += wxString::Format(wxT("$!NDOS:OwnShip,%f,"), gLon)
+            +wxString::Format(wxT("%f,"),gLat)
+            +wxString::Format(wxT("%f,"),((gSog)*1852/3600))
+            +wxString::Format(wxT("%f,"), gCog)
+            +wxString::Format(wxT("%f,"), g_n_ownship_length_meters)
             +wxString::Format(wxT("%f\r\n"), g_n_ownship_beam_meters);
     
     ArrayOfPlugIn_AIS_Targets *current_targets = pPlugIn->GetAisTargets();
     
     for (auto it = current_targets->begin(); it != current_targets->end(); ++it )
     {
-        data += wxString::Format(wxT("$!NDAR:%i-"),(*it)->MMSI)
-                +wxString::Format(wxT("%f-"),(*it)->Lon)
-                +wxString::Format(wxT("%f-"),(*it)->Lat)
-                +wxString::Format(wxT("%f-"),(((*it)->SOG)*1852/3600))
+        data += wxString::Format(wxT("$!NDAR:%i,"),(*it)->MMSI)
+                +wxString::Format(wxT("%f,"),(*it)->Lon)
+                +wxString::Format(wxT("%f,"),(*it)->Lat)
+                +wxString::Format(wxT("%f,"),(((*it)->SOG)*1852/3600))
                 +wxString::Format(wxT("%f\r\n"),(*it)->COG);
         //data = "$!NDAR:12,12,12,12,12\r\n";
     }
-    for (int k = 0; k< 50; k++) 
+    for (int k = 0; k< 500; k++) 
         data += "$!NDAR:12,12,12,12,12\r\n";
     // Read the size
     
@@ -867,8 +867,10 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
     TestLogger logtest("GetClientResult");
 
     // Read the message
-    unsigned char len;
-    sock->Read(&len, 1);
+    unsigned int len;
+    sock->Read(&len, 4);
+    // unsigned char len;
+    // sock->Read(&len, 1);
     wxCharBuffer buf(len);
     sock->Read(buf.data(), len);
     
@@ -912,7 +914,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
         wxCharBuffer buff(bufflen);
         buff = s.ToUTF8();
         // Write it back
-        sock->Write(&bufflen, 1);
+        sock->Write(&bufflen, 4);
         sock->Write(buff, bufflen);
         return ;
     }
