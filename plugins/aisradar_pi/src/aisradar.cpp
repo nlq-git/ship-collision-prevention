@@ -824,8 +824,6 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
 
     sock->SetFlags(wxSOCKET_WAITALL);
 
-    
-
     // Read the data
     // sock->Read(buf.data(), len);
     wxLogMessage("Got the data, sending it back");
@@ -847,14 +845,8 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
                 +wxString::Format(wxT("%f,"),(*it)->Lat)
                 +wxString::Format(wxT("%f,"),(((*it)->SOG)*1852/3600))
                 +wxString::Format(wxT("%f\r\n"),(*it)->COG);
-        //data = "$!NDAR:12,12,12,12,12\r\n";
     }
-    for (int k = 0; k< 500; k++) 
-        data += "$!NDAR:12,12,12,12,12\r\n";
     // Read the size
-    
-    // sock->Read(&len, 1);
-    
     unsigned int bufflen = data.size();
     wxCharBuffer buf(bufflen);
     buf = data.ToUTF8();

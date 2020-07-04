@@ -744,6 +744,7 @@ private:
       RolloverWin *m_pRouteRolloverWin;
       RolloverWin *m_pTrackRolloverWin;
       RolloverWin *m_pAISRolloverWin;
+      std::vector<RolloverWin*> vecRolloverWin;
       
       TimedPopupWin *m_pBrightPopup;
       

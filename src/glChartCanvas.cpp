@@ -4740,7 +4740,7 @@ void glChartCanvas::Render()
         glLoadIdentity();
     }
 #endif
-
+    
     DrawEmboss(m_pParentCanvas->EmbossDepthScale() );
     DrawEmboss(m_pParentCanvas->EmbossOverzoomIndicator( gldc ) );
 
@@ -4750,9 +4750,15 @@ void glChartCanvas::Render()
     if( m_pParentCanvas->m_pRouteRolloverWin )
         m_pParentCanvas->m_pRouteRolloverWin->Draw(gldc);
 
-    if( m_pParentCanvas->m_pAISRolloverWin )
-        m_pParentCanvas->m_pAISRolloverWin->Draw(gldc);
-
+    // if( m_pParentCanvas->m_pAISRolloverWin )
+    //     m_pParentCanvas->m_pAISRolloverWin->Draw(gldc);
+    if (!m_pParentCanvas->vecRolloverWin.empty()){
+        for (auto &s:m_pParentCanvas->vecRolloverWin ){
+            if( s ) {
+                s->Draw(gldc);
+            }
+        }
+    }
     //  On some platforms, the opengl context window is always on top of any standard DC windows,
     //  so we need to draw the Chart Info Window and the Thumbnail as overlayed bmps.
 

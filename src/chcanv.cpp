@@ -3731,6 +3731,38 @@ void ChartCanvas::OnRolloverPopupTimerEvent( wxTimerEvent& event )
     //  Handle the AIS Rollover Window first
     bool showAISRollover = false;
     if( g_pAIS && g_pAIS->GetNumTargets() && m_bShowAIS ) {
+        auto itr = g_pAIS->GetTargetList()->begin();
+        vecRolloverWin.clear();
+        while(itr!=g_pAIS->GetTargetList()->end()){
+            AIS_Target_Data *ptarget = itr->second;
+            if (ptarget!=nullptr){
+                showAISRollover = true;
+                // if( NULL == m_pAISRolloverWin ) {
+                    m_pAISRolloverWin = new RolloverWin( this );
+                    // m_pAISRolloverWin->IsActive( false );
+                // }
+                //if( !m_pAISRolloverWin->IsActive() ) {
+                    wxString s = ptarget->GetRolloverString();
+                    m_pAISRolloverWin->SetString( s );
+
+                    wxSize win_size = GetSize();
+                    if( console && console->IsShown() ) win_size.x -= console->GetSize().x;
+                    wxPoint r;
+                    GetCanvasPointPix( ptarget->Lat, ptarget->Lon, &r );
+                    // PanCanvas( r.x - mouse_x, r.y - mouse_y );
+                    m_pAISRolloverWin->SetBestPosition( r.x, r.y, 16, 16, AIS_ROLLOVER, win_size );
+
+                    m_pAISRolloverWin->SetBitmap( AIS_ROLLOVER );
+                    m_pAISRolloverWin->IsActive( true );
+                    b_need_refresh = true;
+                    vecRolloverWin.push_back(m_pAISRolloverWin);
+                //}
+            }
+                
+            itr++;
+        }
+
+        #if 0
         SelectItem *pFind = pSelectAIS->FindSelection( this, m_cursor_lat, m_cursor_lon, SELTYPE_AISTARGET );
         if( pFind ) {
             int FoundAIS_MMSI = (wxIntPtr) pFind->m_pData1;
@@ -3778,6 +3810,7 @@ void ChartCanvas::OnRolloverPopupTimerEvent( wxTimerEvent& event )
             m_AISRollover_MMSI = 0;
             showAISRollover = false;
         }
+        #endif
     }
 
     //  Maybe turn the rollover off
@@ -3983,7 +4016,8 @@ void ChartCanvas::OnRolloverPopupTimerEvent( wxTimerEvent& event )
                     showTrackRollover = true;
                     break;
                 }
-            } else
+            } 
+            else
                 node = node->GetNext();
         }
     } else {
