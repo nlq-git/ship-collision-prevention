@@ -846,6 +846,7 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
                 +wxString::Format(wxT("%f,"),(((*it)->SOG)*1852/3600))
                 +wxString::Format(wxT("%f\r\n"),(*it)->COG);
     }
+
     // Read the size
     unsigned int bufflen = data.size();
     wxCharBuffer buf(bufflen);
@@ -857,7 +858,7 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
 void RadarFrame::GetClientResult(wxSocketBase *sock)
 {
     TestLogger logtest("GetClientResult");
-
+    sock->SetFlags(wxSOCKET_WAITALL);
     // Read the message
     unsigned int len;
     sock->Read(&len, 4);
