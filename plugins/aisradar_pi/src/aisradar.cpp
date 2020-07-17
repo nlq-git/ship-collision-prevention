@@ -145,6 +145,7 @@ void executeCMD(const char *cmd, char *result)
         printf("popen %s error\n", ps);   
     }   
 }
+
 vector<wxString> split(const wxString& str, const wxString& delim) {
 	vector<wxString> res;
 	if("" == str) return res;
@@ -218,6 +219,8 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
                               const wxString& caption, 
                               const wxPoint& pos, const wxSize& size )
 {
+    ReadDataFromFile();
+
     pParent = parent;
     pPlugIn = ppi;
     long wstyle = wxDEFAULT_FRAME_STYLE;
@@ -1201,4 +1204,33 @@ void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius
         dc.SetTextForeground(wxColour(128,128,128));
         dc.DrawText(wxString::Format(_T("%3.1d\u00B0"),(int)(m_Ebl+offset)%360),tx,ty);
     }
+}
+
+void RadarFrame::ReadDataFromFile(){
+    ifstream data;
+    data.open("/home/sa/dataLine.txt");
+    string s;
+    
+    PlugIn_Route *newRouteLine = new PlugIn_Route();
+    
+    while (getline(data, s)) //getline(data,s)是逐行读取data中的文件信息
+    {
+        vector<wxString> oneLineRouteData = split(s, "\t"); // number lat_1 lat_2 lon_1 lon_2
+        int number_route = wxAtoi(oneLineRouteData[0]);
+        double lat_1, lat_2, lon_1, lon_2;
+        if (number_route > 0 
+        && oneLineRouteData[1].ToDouble(&lat_1) 
+        && oneLineRouteData[2].ToDouble(&lat_2) 
+        && oneLineRouteData[3].ToDouble(&lon_1) 
+        && oneLineRouteData[4].ToDouble(&lon_2) ){
+            double newLat = lat_1 + lat_2/60.0;
+            double newLon = lon_1 + lon_2/60.0;
+            PlugIn_Waypoint *newWayPoint = new PlugIn_Waypoint(newLat, newLon, "triangle", "Line");
+
+            newRouteLine->pWaypointList->Append(newWayPoint);
+        }
+    }
+
+    AddPlugInRoute(newRouteLine);
+    // delete newRouteLine;
 }

@@ -34,6 +34,7 @@
 #include "wx/dcbuffer.h"
 #include "Target.h"
 
+#include <fstream>       //提供文件头文件
 #ifndef  WX_PRECOMP
   #include "wx/wx.h"
 #endif //precompiled headers
@@ -170,6 +171,9 @@ private:
     void SendData2Client(wxSocketBase *sock);
     void GetClientResult(wxSocketBase *sock);
     void Test3(wxSocketBase *sock);
+
+    // add route
+    void ReadDataFromFile();
 
     // kalman
     //FusionEKF               fusionEKF;
