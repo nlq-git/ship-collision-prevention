@@ -153,6 +153,7 @@ private:
     int                     m_Range;
     ViewState              *m_pViewState;
 
+
     wxButton               *m_pShowList;
     wxTextCtrl             *m_textCtrl1;
     wxButton               *m_soundButton;
@@ -173,7 +174,7 @@ private:
     void Test3(wxSocketBase *sock);
 
     // add route
-    void ReadDataFromFile();
+    void ReadDataFromFile(wxCommandEvent& event);
 
     // kalman
     //FusionEKF               fusionEKF;

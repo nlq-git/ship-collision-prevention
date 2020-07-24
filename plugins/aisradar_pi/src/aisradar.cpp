@@ -38,6 +38,7 @@
 #include <list>
 #include <algorithm>
 #include <thread>
+#include <wx/filedlg.h>
 
 #define  min(a,b)  ( (a>b)? b : a )
 #define  max(a,b)  ( (a>b)? a : b )
@@ -185,6 +186,7 @@ BEGIN_EVENT_TABLE ( RadarFrame, wxFrame )
     // EVT_BUTTON   ( soundPlayId, RadarFrame::TTSPlaySound )
     // EVT_BUTTON   ( connectOptionLinkId, RadarFrame::SetConnectOption )
     // EVT_SOCKET   ( SOCKET_ID,     RadarFrame::OnSocketEvent) 
+    EVT_BUTTON   (btShowAisList, RadarFrame::ReadDataFromFile) // 
     EVT_SOCKET(SERVER_ID,  RadarFrame::OnServerEvent)
     EVT_SOCKET(SOCKET_ID,  RadarFrame::OnSocketEvent)
 END_EVENT_TABLE()
@@ -219,7 +221,6 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
                               const wxString& caption, 
                               const wxPoint& pos, const wxSize& size )
 {
-    ReadDataFromFile();
 
     pParent = parent;
     pPlugIn = ppi;
@@ -249,10 +250,10 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     // Add controls
     wxStaticBox    *sb=new wxStaticBox(panel,wxID_ANY, _("Options"));
     wxStaticBoxSizer *controls = new wxStaticBoxSizer(sb, wxHORIZONTAL);
-    wxStaticText *st1 = new wxStaticText(panel,wxID_ANY,_("Range"));
+    wxStaticText *st1 = new wxStaticText(panel,wxID_ANY,_("color"));
     controls->Add(st1,0,wxRIGHT,5);
     m_pRange = new wxComboBox(panel, cbRangeId, wxT(""));
-    m_pRange->Append(wxT("0.25"));
+    m_pRange->Append(wxT("green"));
     m_pRange->Append(wxT("0.5") );
     m_pRange->Append(wxT("1")   );
     m_pRange->Append(wxT("2")   );
@@ -1206,9 +1207,23 @@ void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius
     }
 }
 
-void RadarFrame::ReadDataFromFile(){
+void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
     ifstream data;
-    data.open("/home/sa/dataLine.txt");
+    
+    string path;
+    wxString wildcard = wxT("TXT files (*.txt)|*.txt");
+    wxString defaultFilename = wxEmptyString;
+    wxFileDialog dialog(this, "Test for file pick", "/", defaultFilename,
+        wildcard);
+    if (dialog.ShowModal() == wxID_OK)
+    {
+        path = dialog.GetPath();
+        int filterIndex = dialog.GetFilterIndex();
+    }
+    if (path.size() == 0){
+        return;
+    }
+    data.open(path);
     string s;
     
     PlugIn_Route *newRouteLine = new PlugIn_Route();
