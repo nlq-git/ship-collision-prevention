@@ -1209,19 +1209,20 @@ void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius
 
 void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
     ifstream data;
+    wxArrayString allpaths;
     string path;
     wxString wildcard = wxT("TXT files (*.txt)|*.txt");
     wxString defaultFilename = wxEmptyString;
     wxFileDialog dialog(this, "Test for file pick", "/home/nlq/ship-boundary/", defaultFilename,
-        wildcard);
+        wildcard,wxFD_MULTIPLE);
     if (dialog.ShowModal() == wxID_OK)
     {
-        path = dialog.GetPath();
+        dialog.GetPaths(allpaths);
         int filterIndex = dialog.GetFilterIndex();
     }
-    if (path.size() == 0){
-        return;
-    }
+    for(int i = 0; i < allpaths.size(); i++ )
+   {
+    path = allpaths[i];
     data.open(path);
     string s;
     
@@ -1244,7 +1245,14 @@ void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
             newRouteLine->pWaypointList->Append(newWayPoint);
         }
     }
+    data.close();
 
+    string::size_type iPos = path.find_last_of('/') + 1;
+    string filename = path.substr(iPos, path.length() - iPos);
+    string name = filename.substr(0, filename.rfind("."));
+    newRouteLine->m_NameString = name;
     AddPlugInRoute(newRouteLine);
+    delete newRouteLine;
+    }
     // delete newRouteLine;
 }

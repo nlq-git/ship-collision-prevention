@@ -50,5 +50,6 @@
         "typeinfo": "cpp",
         "regex": "cpp"
     },
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "cmake.configureOnOpen": true
 }
