@@ -1208,6 +1208,7 @@ void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius
 }
 
 void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
+    bool yellowline, greenline, megentaline;
     ifstream data;
     wxArrayString allpaths;
     string path;
@@ -1250,8 +1251,40 @@ void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
     string::size_type iPos = path.find_last_of('/') + 1;
     string filename = path.substr(iPos, path.length() - iPos);
     string name = filename.substr(0, filename.rfind("."));
-    newRouteLine->m_NameString = name;
-    AddPlugInRoute(newRouteLine);
+    newRouteLine->m_NameString = name; 
+    
+    yellowline = ((name =="1-1")||(name =="1-2" )||(name == "1-5")||(name == "1-6")||(name == "2-3")||(name == "2-4")||
+    (name == "2-6")||(name == "2-7")||(name == "4-1")||(name == "4-2")||(name == "5-1")||(name == "5-2")||(name == "7-1")||
+    (name == "7-2")||(name == "9-1")||(name == "9-2")||(name == "9-3")||(name == "9-4")||(name == "10-1")||(name == "11-1")||(name == "11-3"));
+
+    greenline = ((name =="1-3")||(name =="1-7" )||(name == "2-1")||(name == "2-2")||(name == "3-1")||(name == "3-2")||
+    (name == "3-3")||(name == "3-4")||(name == "3-5")||(name == "3-7")||(name == "4-3")||(name == "4-5")||(name == "5-3")||
+    (name == "5-4")||(name == "5-5")||(name == "6-1")||(name == "6-3")||(name == "7-4")||(name == "8-1")||(name == "8-3")||
+    (name == "9-6")||(name == "10-2")||(name == "10-3")||(name == "11-4")||(name == "11-6"));
+
+    megentaline = ((name =="隔离1-1")||(name =="隔离1-2" )||(name == "隔离2-1")||(name == "隔离2-2")||(name == "隔离3-1")||(name == "隔离3-2")||
+    (name == "隔离4-1")||(name == "隔离4-2")||(name == "隔离5-1")||(name == "隔离5-2")||(name == "隔离6-1")||(name == "隔离6-2"));
+
+    if(yellowline)
+    {
+        AddPlugInRoute2(newRouteLine,"Yellow");
+    }
+    else if(greenline)
+    {
+        AddPlugInRoute2(newRouteLine,"Green");
+    }
+    else if(megentaline)
+    {
+
+        AddPlugInRoute2(newRouteLine,"Magenta");
+    }
+    else
+    {
+        AddPlugInRoute2(newRouteLine,"Black");
+    }
+    
+    
+    
     delete newRouteLine;
     }
     // delete newRouteLine;

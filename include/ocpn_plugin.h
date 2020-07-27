@@ -797,6 +797,7 @@ extern DECL_EXP bool DeleteSingleWaypoint( wxString &GUID );
 extern DECL_EXP bool UpdateSingleWaypoint( PlugIn_Waypoint *pwaypoint );
 
 extern DECL_EXP bool AddPlugInRoute( PlugIn_Route *proute, bool b_permanent = true );
+extern DECL_EXP bool AddPlugInRoute2( PlugIn_Route *proute,const wxString& linecolor ,bool b_permanent = true );
 extern DECL_EXP bool DeletePlugInRoute( wxString& GUID );
 extern DECL_EXP bool UpdatePlugInRoute ( PlugIn_Route *proute );
 
