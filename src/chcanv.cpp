@@ -899,9 +899,11 @@ ChartCanvas::~ChartCanvas()
     delete pRotDefTimer;
     delete m_DoubleClickTimer;
 
+    vecRolloverWin.clear();
     delete m_pTrackRolloverWin;
     delete m_pRouteRolloverWin;
     delete m_pAISRolloverWin;
+    
     delete m_pBrightPopup;
 
     delete m_pCIWin;
@@ -3736,12 +3738,12 @@ void ChartCanvas::OnRolloverPopupTimerEvent( wxTimerEvent& event )
         while(itr!=g_pAIS->GetTargetList()->end()){
             AIS_Target_Data *ptarget = itr->second;
             if (ptarget!=nullptr){
-                showAISRollover = true;
-                // if( NULL == m_pAISRolloverWin ) {
+                double brg, dist;
+                DistanceBearingMercator( ptarget->Lat, ptarget->Lon,
+                                            gLat, gLon, &brg, &dist );
+                if (dist < 1 && dist >0){
+                    showAISRollover = true;
                     m_pAISRolloverWin = new RolloverWin( this );
-                    // m_pAISRolloverWin->IsActive( false );
-                // }
-                //if( !m_pAISRolloverWin->IsActive() ) {
                     wxString s = ptarget->GetRolloverString();
                     m_pAISRolloverWin->SetString( s );
 
@@ -3749,14 +3751,13 @@ void ChartCanvas::OnRolloverPopupTimerEvent( wxTimerEvent& event )
                     if( console && console->IsShown() ) win_size.x -= console->GetSize().x;
                     wxPoint r;
                     GetCanvasPointPix( ptarget->Lat, ptarget->Lon, &r );
-                    // PanCanvas( r.x - mouse_x, r.y - mouse_y );
                     m_pAISRolloverWin->SetBestPosition( r.x, r.y, 16, 16, AIS_ROLLOVER, win_size );
 
                     m_pAISRolloverWin->SetBitmap( AIS_ROLLOVER );
                     m_pAISRolloverWin->IsActive( true );
                     b_need_refresh = true;
                     vecRolloverWin.push_back(m_pAISRolloverWin);
-                //}
+                }
             }
                 
             itr++;

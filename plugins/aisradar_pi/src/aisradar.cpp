@@ -1209,43 +1209,41 @@ void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius
 
 void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
     ifstream data;
-    
-    string path;
+    wxArrayString allpaths;
     wxString wildcard = wxT("TXT files (*.txt)|*.txt");
     wxString defaultFilename = wxEmptyString;
-    wxFileDialog dialog(this, "Test for file pick", "/", defaultFilename,
-        wildcard);
-    if (dialog.ShowModal() == wxID_OK)
-    {
-        path = dialog.GetPath();
+    wxFileDialog dialog(this, "Test for file pick", "/home/sa/", defaultFilename,
+        wildcard,wxFD_MULTIPLE);
+    if (dialog.ShowModal() == wxID_OK) {
+        dialog.GetPaths(allpaths);
         int filterIndex = dialog.GetFilterIndex();
     }
-    if (path.size() == 0){
-        return;
-    }
-    data.open(path);
-    string s;
-    
-    PlugIn_Route *newRouteLine = new PlugIn_Route();
-    
-    while (getline(data, s)) //getline(data,s)是逐行读取data中的文件信息
-    {
-        vector<wxString> oneLineRouteData = split(s, "\t"); // number lat_1 lat_2 lon_1 lon_2
-        int number_route = wxAtoi(oneLineRouteData[0]);
-        double lat_1, lat_2, lon_1, lon_2;
-        if (number_route > 0 
-        && oneLineRouteData[1].ToDouble(&lat_1) 
-        && oneLineRouteData[2].ToDouble(&lat_2) 
-        && oneLineRouteData[3].ToDouble(&lon_1) 
-        && oneLineRouteData[4].ToDouble(&lon_2) ){
-            double newLat = lat_1 + lat_2/60.0;
-            double newLon = lon_1 + lon_2/60.0;
-            PlugIn_Waypoint *newWayPoint = new PlugIn_Waypoint(newLat, newLon, "triangle", "Line");
+    for(int i = 0; i < allpaths.size(); i++ ) {
+        data.open(allpaths[i]);
+        string s;
+        
+        PlugIn_Route *newRouteLine = new PlugIn_Route();
+        
+        while (getline(data, s)) //getline(data,s)是逐行读取data中的文件信息
+        {
+            vector<wxString> oneLineRouteData = split(s, "\t"); // number lat_1 lat_2 lon_1 lon_2
+            int number_route = wxAtoi(oneLineRouteData[0]);
+            double lat_1, lat_2, lon_1, lon_2;
+            if (number_route > 0 
+            && oneLineRouteData[1].ToDouble(&lat_1) 
+            && oneLineRouteData[2].ToDouble(&lat_2) 
+            && oneLineRouteData[3].ToDouble(&lon_1) 
+            && oneLineRouteData[4].ToDouble(&lon_2) ){
+                double newLat = lat_1 + lat_2/60.0;
+                double newLon = lon_1 + lon_2/60.0;
+                PlugIn_Waypoint *newWayPoint = new PlugIn_Waypoint(newLat, newLon, "empty", "Line");
 
-            newRouteLine->pWaypointList->Append(newWayPoint);
+                newRouteLine->pWaypointList->Append(newWayPoint);
+            }
         }
+        data.close();
+        AddPlugInRoute(newRouteLine);
+        delete newRouteLine;
     }
-
-    AddPlugInRoute(newRouteLine);
     // delete newRouteLine;
 }
