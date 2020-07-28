@@ -4484,11 +4484,13 @@ bool AddPlugInRoute( PlugIn_Route *proute, bool b_permanent )
 
     return true;
 }
-bool AddPlugInRoute2( PlugIn_Route *proute, const wxString& linecolor,bool b_permanent )
+bool AddPlugInRoute2( PlugIn_Route *proute, const wxString& linecolor,const int& linewidth,const wxPenStyle& linestyle,bool b_permanent )
 {
 
     Route *route = new Route();
     route->m_Colour = linecolor;
+    route->m_width = linewidth;
+    route->m_style = linestyle;
 
     PlugIn_Waypoint *pwp;
     RoutePoint *pWP_src;

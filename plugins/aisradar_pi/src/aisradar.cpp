@@ -184,7 +184,7 @@ BEGIN_EVENT_TABLE ( RadarFrame, wxFrame )
     EVT_TIMER    ( tmRefreshId, RadarFrame::OnTimer )
     // EVT_TIMER    ( tmTTSId, RadarFrame::TTSPlaySoundTimer )
     // EVT_BUTTON   ( soundPlayId, RadarFrame::TTSPlaySound )
-    // EVT_BUTTON   ( connectOptionLinkId, RadarFrame::SetConnectOption )
+    // EVT_BUTTON   ( connectOptionLinkId, RadarFrame::ReadDataFromFile)
     // EVT_SOCKET   ( SOCKET_ID,     RadarFrame::OnSocketEvent) 
     EVT_BUTTON   (btAddroute, RadarFrame::ReadDataFromFile)
     EVT_SOCKET(SERVER_ID,  RadarFrame::OnServerEvent)
@@ -1254,33 +1254,35 @@ void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
     newRouteLine->m_NameString = name; 
     
     yellowline = ((name =="1-1")||(name =="1-2" )||(name == "1-5")||(name == "1-6")||(name == "2-3")||(name == "2-4")||
-    (name == "2-6")||(name == "2-7")||(name == "4-1")||(name == "4-2")||(name == "5-1")||(name == "5-2")||(name == "7-1")||
-    (name == "7-2")||(name == "9-1")||(name == "9-2")||(name == "9-3")||(name == "9-4")||(name == "10-1")||(name == "11-1")||(name == "11-3"));
+    (name == "2-6")||(name == "2-7")||(name == "4-1")||(name == "4-2")||(name == "4-5")||(name == "4-7")||(name == "4-8")||
+    (name == "4-9")||(name == "4-10")||(name == "5-1")||(name == "5-2")||(name == "7-1")||(name == "7-2")||(name == "9-1")||
+    (name == "9-2")||(name == "9-3")||(name == "9-4")||(name == "10-1")||(name == "11-1")||(name == "11-3"));
 
     greenline = ((name =="1-3")||(name =="1-7" )||(name == "2-1")||(name == "2-2")||(name == "3-1")||(name == "3-2")||
-    (name == "3-3")||(name == "3-4")||(name == "3-5")||(name == "3-7")||(name == "4-3")||(name == "4-5")||(name == "5-3")||
+    (name == "3-3")||(name == "3-4")||(name == "3-5")||(name == "3-7")||(name == "4-3")||(name == "5-3")||
     (name == "5-4")||(name == "5-5")||(name == "6-1")||(name == "6-3")||(name == "7-4")||(name == "8-1")||(name == "8-3")||
     (name == "9-6")||(name == "10-2")||(name == "10-3")||(name == "11-4")||(name == "11-6"));
 
-    megentaline = ((name =="隔离1-1")||(name =="隔离1-2" )||(name == "隔离2-1")||(name == "隔离2-2")||(name == "隔离3-1")||(name == "隔离3-2")||
-    (name == "隔离4-1")||(name == "隔离4-2")||(name == "隔离5-1")||(name == "隔离5-2")||(name == "隔离6-1")||(name == "隔离6-2"));
+    megentaline = ((name =="隔离1-1")||(name =="隔离1-2" )||(name == "隔离2-1")||(name == "隔离2-2")||(name == "隔离3-1")||
+    (name == "隔离3-2")||(name == "隔离4-1")||(name == "隔离4-2")||(name == "隔离4-3")||(name == "隔离4-4")||(name == "隔离4-6")||
+    (name == "隔离4-7")||(name == "隔离4-8")||(name == "隔离4-9")||(name == "隔离5-1")||(name == "隔离5-2")||(name == "隔离6-1")||(name == "隔离6-2"));
 
     if(yellowline)
     {
-        AddPlugInRoute2(newRouteLine,"Yellow");
+        AddPlugInRoute2(newRouteLine,"DarkCyan",3,wxPENSTYLE_LONG_DASH);
     }
     else if(greenline)
     {
-        AddPlugInRoute2(newRouteLine,"Green");
+        AddPlugInRoute2(newRouteLine,"Red",3,wxPENSTYLE_SOLID);
     }
     else if(megentaline)
     {
 
-        AddPlugInRoute2(newRouteLine,"Magenta");
+        AddPlugInRoute2(newRouteLine,"DarkRed",1,wxPENSTYLE_SOLID);
     }
     else
     {
-        AddPlugInRoute2(newRouteLine,"Black");
+        AddPlugInRoute2(newRouteLine,"Black",1,wxPENSTYLE_SOLID);
     }
     
     
