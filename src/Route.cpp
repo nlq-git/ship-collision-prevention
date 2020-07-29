@@ -561,7 +561,8 @@ void Route::DrawGLRouteLines( ViewPort &vp, ChartCanvas *canvas )
     glColor3ub(col.Red(), col.Green(), col.Blue());
     DrawGLLines(vp, NULL, canvas);
 #endif
-
+    if(m_Colour != "DarkRed")
+    {
     glDisable (GL_LINE_STIPPLE);
 
     /* direction arrows.. could probably be further optimized for opengl */
@@ -574,6 +575,7 @@ void Route::DrawGLRouteLines( ViewPort &vp, ChartCanvas *canvas )
             RenderSegmentArrowsGL( dc, rpt1.x, rpt1.y, rpt2.x, rpt2.y, vp );
         rpt1 = rpt2;
         node = node->GetNext();
+    }
     }
     #endif
 }

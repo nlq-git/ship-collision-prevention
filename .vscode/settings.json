@@ -51,5 +51,5 @@
         "regex": "cpp"
     },
     "git.ignoreLimitWarning": true,
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": false
 }
