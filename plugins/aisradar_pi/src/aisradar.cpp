@@ -363,7 +363,7 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     wxBoxSizer *m_buttonBox;
     m_buttonBox = new wxBoxSizer( wxVERTICAL );
     
-    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("Option"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
+    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("Addroute"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_ConnectOptionButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5 );
     m_soundButton = new wxButton( panel, soundPlayId, wxT("Open"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_soundButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5  );
