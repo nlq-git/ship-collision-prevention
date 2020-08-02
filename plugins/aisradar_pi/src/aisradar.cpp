@@ -82,6 +82,19 @@ enum    Ids { cbRangeId = 10001,
 
 static const int RESTART  = -1;
 static const int BASE_STATION = 3;
+static unsigned int GetClientResultNo = 0;//获得张梁结果计数
+//播报时序计数
+static unsigned int YawAlarmLeftNo = 0; 
+static unsigned int YawAlarmRightNo = 0;
+static unsigned int BoundaryAlarmLeftNo = 0;
+static unsigned int BoundaryAlarmRightNo = 0;
+static unsigned int TurnAlarm8minNo =0;
+static unsigned int TurnAlarm5minNo =0;
+static unsigned int TurnAlarm2minNo =0;
+wxString AidDecisionTemp;
+
+
+
 
 double a1 = 6;    //AIS距离标准差
 double a2 = 0.4;   //AIS方位标准差
@@ -102,7 +115,29 @@ double a32 = (a3*a3) / (a3*a3 + r3*r3);
 double a41 = (r4*r4) / (a4*a4 + r4*r4);
 double a42 = (a4*a4) / (a4*a4 + r4*r4);
 
+
+
 #include <sys/wait.h> // for WEXITSTATUS & friends
+
+void CilentResultSignalZero(void){
+      YawAlarmLeftNo = 0; 
+      YawAlarmRightNo = 0;
+      BoundaryAlarmLeftNo = 0;
+      BoundaryAlarmRightNo = 0;
+      TurnAlarm8minNo =0;
+      TurnAlarm5minNo =0;
+      TurnAlarm2minNo =0;
+      AidDecisionTemp = wxT("");
+
+}
+
+static int do_play_wav(const char* cmd)
+{
+    char buff_wav[1024];
+    snprintf(buff_wav, sizeof( buff_wav ), "play  '%s'.wav", cmd);
+    int status = system(buff_wav);
+    return status ;
+}
 
 static int do_play(const char* cmd)
 {
@@ -254,7 +289,7 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
 	ShipInfo->CreateGrid( 4, 3);
 	ShipInfo->EnableEditing( true );
 	ShipInfo->EnableGridLines( true );
-	ShipInfo->SetGridLineColour( wxSystemSettings::GetColour( wxSYS_COLOUR_HIGHLIGHT ) );
+	//ShipInfo->SetGridLineColour( wxSystemSettings::GetColour( wxSYS_COLOUR_HIGHLIGHT ) );
 	ShipInfo->EnableDragGridSize( false );
 	ShipInfo->SetMargins( 0, 0 );
 
@@ -935,6 +970,7 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
 void RadarFrame::GetClientResult(wxSocketBase *sock)
 {
     TestLogger logtest("GetClientResult");
+   
 
     // Read the message
     unsigned int len;
@@ -983,9 +1019,11 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
             // TODO:改成表格显示
             if (res[0] == "out"){
                 OwnShipDesion->SetCellValue(0, 0, wxT("船舶在航道外"));
+                CilentResultSignalZero();
             }
             else if(res[0] == "not"){
                 OwnShipDesion->SetCellValue(0, 0, wxT("船舶在航道内但未顺航道行驶"));
+                CilentResultSignalZero();
             }
 
             else{
@@ -1016,72 +1054,149 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
 
                 }
                 
-            }
             
+ /*偏航报警时序思想
+在此cpp头部定义两个计数全局变量YawAlarmLeftNo和YawAlarmRightNo
+和张梁商定，如若重复，那只播报第一次以及每接收到25次数据再播报
+故可以在相应环境下，将计数变量++或者置0
+边界报警同理
+ */           
 
                 
             wxString YawAlarm;//偏航报警
 
             if(res[i]=="R"){
-                YawAlarm.append(wxT("R"));
-                do_play("niyixiangyoucepianhang");
+                YawAlarm.append(wxT("右侧偏航"));
+                if (YawAlarmRightNo % CLIENT_RESULT_PLAY_INTERVAL == 0){
+                    do_play_wav("YawAlarmRight");
+                }
+                YawAlarmLeftNo = 0;
+                YawAlarmRightNo ++;
+                
             }
             else if(res[i]=="L"){
-                YawAlarm.append(wxT("L"));
-                do_play("niyixiangzuocepianhang");
+                YawAlarm.append(wxT("左侧偏航"));
+                if (YawAlarmLeftNo % CLIENT_RESULT_PLAY_INTERVAL == 0){
+                    do_play_wav("YawAlarmLeft");
+                }
+                YawAlarmRightNo = 0;
+                YawAlarmLeftNo ++;
+                
             }
-             else if(res[i]=="K")
-                YawAlarm.append(wxT("K"));
-    
+             else if(res[i]=="K"){
+                YawAlarm.append(wxT("正常航行"));
+                YawAlarmLeftNo = 0;
+                YawAlarmRightNo = 0;
+            }
+
             else{    
+                YawAlarmLeftNo = 0;
+                YawAlarmRightNo = 0;
             }
             i++;
 
             if(res[i]=="0")
-                YawAlarm.append(wxT("0"));
+                YawAlarm.append(wxT(""));
 
-            else 
+            else {
                 YawAlarm.append(res[i]);
-             
+                YawAlarm.append(wxT("m"));
+            }
             OwnShipDesion->SetCellValue(0, 0, YawAlarm);
             i++;
 
 
+/*转向点报警时序思想
+分别在8 5 2min进行报警
+但只在相应区间报警一次
+*/
+
              wxString BoundaryAlarm; //边界报警
 
             if(res[i]=="R"){
-                BoundaryAlarm.append(wxT("R"));
-                do_play("chuanbokaojinhangdaoyouce");
+                BoundaryAlarm.append(wxT("距离右侧航道边界"));
+                if (BoundaryAlarmRightNo % CLIENT_RESULT_PLAY_INTERVAL == 0){
+                    do_play_wav("BoundaryAlarmRight");
+                }
+                BoundaryAlarmLeftNo = 0;
+                BoundaryAlarmRightNo ++;
+                
             }
             else if(res[i]=="L"){
-                BoundaryAlarm.append(wxT("L"));
-                do_play("chuanbokaojinhangdaozuoce");
+                BoundaryAlarm.append(wxT("距离左侧航道边界"));
+                if (BoundaryAlarmLeftNo % CLIENT_RESULT_PLAY_INTERVAL == 0){
+                    do_play_wav("BoundaryAlarmLeft");
+                }
+                BoundaryAlarmLeftNo ++;
+                BoundaryAlarmRightNo = 0;
+                
             }
-             else if(res[i]=="K")
-                BoundaryAlarm.append(wxT("K"));
-    
-            else{    
+             else if(res[i]=="K"){
+                BoundaryAlarm.append(wxT("正常航行"));
+                BoundaryAlarmLeftNo = 0;
+                BoundaryAlarmRightNo = 0;
+             }
+            else{     
+                BoundaryAlarmLeftNo = 0;
+                BoundaryAlarmRightNo = 0;
             }
             i++;
 
             if(res[i]=="0")
-                BoundaryAlarm.append(wxT("0"));
+                BoundaryAlarm.append(wxT(""));
 
-            else 
+            else{
                 BoundaryAlarm.append(res[i]);
-             
+                BoundaryAlarm.append(wxT("m"));
+            }
             OwnShipDesion->SetCellValue(1, 0, BoundaryAlarm);
             i++;
             
             wxString TurnAlarm;//转向报警
             char TurnAlarmBuff[1024];
             if(res[i]=="N")
-                TurnAlarm.append(wxT("N"));
+                TurnAlarm.append(wxT("正常航行"));
 
             else{
                 TurnAlarm.append(res[i]);
-                sprintf(TurnAlarmBuff,"%dmiaohouzhuanxiang",atoi(res[0].c_str()));
-                do_play(TurnAlarmBuff);
+                TurnAlarm.append(wxT("秒后到达下一转向点"));
+
+                if ( (atoi(res[i].c_str())>=475) && (atoi(res[i].c_str())<=495) )
+                {
+                    if(TurnAlarm8minNo = 0){
+                    do_play_wav("TurnAlarm8min");
+                    TurnAlarm8minNo = 1;
+                    TurnAlarm5minNo = 0;
+                    TurnAlarm2minNo = 0;
+                    }
+                }
+
+                if ( (atoi(res[i].c_str())>=285) && (atoi(res[i].c_str())<=315) )
+                {
+                    if(TurnAlarm5minNo = 0){
+                    do_play_wav("TurnAlarm5min");
+                    TurnAlarm8minNo = 0;
+                    TurnAlarm5minNo = 1;
+                    TurnAlarm2minNo = 0;
+                    }
+                }
+                 if ( (atoi(res[i].c_str())>=105) && (atoi(res[i].c_str())<=135) )
+                {
+                    if(TurnAlarm5minNo = 0){
+                    do_play_wav("TurnAlarm2min");
+                    TurnAlarm8minNo = 0;
+                    TurnAlarm5minNo = 0;
+                    TurnAlarm2minNo = 1;
+                    }
+                }
+                else  
+                {
+                    TurnAlarm8minNo = 0;
+                    TurnAlarm5minNo = 0;
+                    TurnAlarm2minNo = 0;
+
+                }
+                
             } 
             OwnShipDesion->SetCellValue(2, 0, TurnAlarm);
             i++;
@@ -1089,24 +1204,21 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
             wxString AidDecisionMaking; //辅助决策
             if(res[i]=="R"){
                 AidDecisionMaking.append(wxT("右转向"));
-                do_play("fujinyouweixianchuanbo");
-                do_play("fjianyixiangyouzhuanxiang");
+                
             }
              else if(res[i]=="L"){
                 AidDecisionMaking.append(wxT("左转向"));
-                do_play("fujinyouweixianchuanbo");
-                do_play("fjianyixiangzuozhuanxiang");
+                
              }
              else if(res[i]=="K")
                 AidDecisionMaking.append(wxT("保向"));
             
              else if(res[i]=="0")
-                AidDecisionMaking.append(wxT("暂无"));
+                AidDecisionMaking.append(wxT("船舶处于汊河口，注意航行"));
 
              else if(res[i]=="D"){
-                AidDecisionMaking.append(wxT("无法避让"));
-                do_play("fujinyouweixianchuanbo");
-                do_play("wufabirang");
+                AidDecisionMaking.append(wxT("危险，请注意避让"));
+                
              }
             else{      
             }
@@ -1114,28 +1226,70 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
 
             if(res[i]=="M"){
                 AidDecisionMaking.append(wxT("减速"));
-                do_play("bingjiansuxingshi");
+                
             }
             else if(res[i]=="A"){
                 AidDecisionMaking.append(wxT("加速"));
-                do_play("bingjiasuxingshi");
+                
             }
              else if(res[i]=="K")
                 AidDecisionMaking.append(wxT("保速"));
             
-             else if(res[i]=="0")
-                AidDecisionMaking.append(wxT("暂无"));
-
-             else if(res[i]=="D"){
-                AidDecisionMaking.append(wxT("无法让"));
-                do_play("wufarangsu");
-             }
+             
             else{      
             }
             OwnShipDesion->SetCellValue(3, 0, AidDecisionMaking);
+
+            if(AidDecisionMaking != AidDecisionTemp){
+                if(AidDecisionMaking == wxT("船舶处于汊河口，注意航行")){
+                   do_play_wav("AidDecisionMakingBranchingRiver");
+                }
             
-           
+                else if(AidDecisionMaking == wxT("危险，请注意避让")){
+                   do_play_wav("AidDecisionMakingDanger");
+                }
+
+                else if(AidDecisionMaking == wxT("保向加速")){
+                   do_play_wav("AidDecisionMakingKeepAdd");
+                }
+
+                else if(AidDecisionMaking == wxT("保向减速")){
+                   do_play_wav("AidDecisionMakingKeepMinus");
+                }
+
+                else if(AidDecisionMaking == wxT("左转向加速")){
+                   do_play_wav("AidDecisionMakingLeftAdd");              
+                }
+                
+                else if(AidDecisionMaking == wxT("左转向保速")){
+                   do_play_wav("AidDecisionMakingLeftKeep");
+                }
+
+                else if(AidDecisionMaking == wxT("左转向减速")){
+                   do_play_wav("AidDecisionMakingLeftMinus");
+                }
+
+                else if(AidDecisionMaking == wxT("右转向加速")){
+                   do_play_wav("AidDecisionMakingRightAdd");              
+                }
+                
+                else if(AidDecisionMaking == wxT("右转向保速")){
+                   do_play_wav("AidDecisionMakingRightKeep");
+                }
+
+                else if(AidDecisionMaking == wxT("右转向减速")){
+                   do_play_wav("AidDecisionMakingRightMinus");
+                }
+
+                else{               
+                }
             
+            }
+            AidDecisionTemp = AidDecisionMaking;
+
+                
+            
+        } 
         }
         wxString s = "Get Message and Prase Right";
         unsigned int bufflen = s.size();
@@ -1146,6 +1300,8 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
         sock->Write(buff, bufflen);
         return ;
     }
+
+    
     
     wxString s = "Something wrong!";
     unsigned int bufflen = s.size();
@@ -1156,6 +1312,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
     sock->Write(buff, bufflen);
     
 }
+
 
 void RadarFrame::Test3(wxSocketBase *sock)
 {
