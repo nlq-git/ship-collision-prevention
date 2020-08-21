@@ -46,7 +46,8 @@
 #define MIN_RADIUS                  150
 #define TEXT_MARGIN                 5
 #define SPACER_MARGIN               5
-#define CLIENT_RESULT_PLAY_INTERVAL 25 //跟张梁商定的重复播报间隔
+#define DEFAULT_SHIPINFO_GRID_ROWS_NUMBER 4 //zhh
+#define CLIENT_RESULT_PLAY_INTERVAL 25 //跟张梁z商定的重复播报间隔
 #ifdef WIN32
     #define   MyFit(a)    Fit(a)
 #else
@@ -112,6 +113,14 @@ public:
     void SetColourScheme(PI_ColorScheme cs);
     void OnLeftMouse( const wxPoint &curpos );
     void paintEvent( wxPaintEvent& event );
+    void OwnShipDecisionBroadcast(void);
+
+//zhh0
+    wxString YawAlarm;
+    wxString BoundaryAlarm;
+    wxString TurnAlarm;
+    wxString AidDecisionMaking; 
+//zhh0
 
 private:
     void OnClose(wxCloseEvent& event);
@@ -175,8 +184,12 @@ private:
     void OnSocketEvent(wxSocketEvent& event);
     void UpdateStatusBar();
 
+    
+     
+
     void SendData2Client(wxSocketBase *sock);
-    void GetClientResult(wxSocketBase *sock);
+    
+    void GetClientResult(wxSocketBase *sock);//zhh
     void Test3(wxSocketBase *sock);
 
     void ReadDataFromFile(wxCommandEvent& event);//nlq 
