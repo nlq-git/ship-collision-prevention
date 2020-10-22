@@ -32,6 +32,7 @@
 #include "wx/socket.h"
 #include "wx/wxprec.h"
 #include "wx/dcbuffer.h"
+#include <wx/textctrl.h>
 #include <wx/grid.h>
 #include "Target.h"
 
@@ -46,8 +47,7 @@
 #define MIN_RADIUS                  150
 #define TEXT_MARGIN                 5
 #define SPACER_MARGIN               5
-#define DEFAULT_SHIPINFO_GRID_ROWS_NUMBER 5 //zhh
-#define CLIENT_RESULT_PLAY_INTERVAL 25 //跟张梁z商定的重复播报间隔
+#define DEFAULT_GRID_ROWS_NUMBER 5 //zhh
 #ifdef WIN32
     #define   MyFit(a)    Fit(a)
 #else
@@ -166,8 +166,12 @@ private:
     int                     m_Range;
     ViewState              *m_pViewState;
 
-    wxGrid                 *ShipInfo;
-    wxGrid                 *OwnShipDesion;
+    wxTextCtrl             *m_VHFTextCtrl;
+    wxGrid                 *m_VHFGrid;
+    wxTextCtrl             *m_TPTextCtrl;
+    wxGrid                 *m_TPGrid;
+
+  
 
     wxButton               *m_pShowList;
     wxTextCtrl             *m_textCtrl1;

@@ -41,7 +41,10 @@
 #include <thread>
 #include <vector>
 #include <stdlib.h>
+#include <stdio.h>
 
+#include <iostream>
+#include <fstream>
 
 
 #define  min(a,b)  ( (a>b)? b : a )
@@ -82,6 +85,27 @@ enum    Ids { cbRangeId = 10001,
 
 static const int RESTART  = -1;
 static const int BASE_STATION = 3;
+//zhh0
+static unsigned int GetClientResultNo = 0;//获得张梁结果计数
+//播报时序计数
+static unsigned int YawAlarmLeftNo = 0; 
+static unsigned int YawAlarmRightNo = 0;
+static unsigned int BoundaryAlarmLeftNo = 0;
+static unsigned int BoundaryAlarmRightNo = 0;
+static unsigned int TurnAlarm8minNo =0;
+static unsigned int TurnAlarm5minNo =0;
+static unsigned int TurnAlarm2minNo =0;
+wxString AidDecisionTemp;
+
+const char * YawAlarmBroadcastContent;
+const char * BoundaryAlarmBroadcastContent;
+const char * TurnAlarmBroadcastContent;
+const char * AidDecisionBroadcastContent;
+//zhh0
+
+
+
+
 
 double a1 = 6;    //AIS距离标准差
 double a2 = 0.4;   //AIS方位标准差
@@ -102,13 +126,80 @@ double a32 = (a3*a3) / (a3*a3 + r3*r3);
 double a41 = (r4*r4) / (a4*a4 + r4*r4);
 double a42 = (a4*a4) / (a4*a4 + r4*r4);
 
-#include <sys/wait.h> // for WEXITSTATUS & friends
 
-static int do_play(const char* cmd)
+
+#include <sys/wait.h> // for WEXITSTATUS & friends
+//zhh
+void CilentResultSignalZero(void){
+      YawAlarmLeftNo = 0; 
+      YawAlarmRightNo = 0;
+      BoundaryAlarmLeftNo = 0;
+      BoundaryAlarmRightNo = 0;
+      TurnAlarm8minNo =0;
+      TurnAlarm5minNo =0;
+      TurnAlarm2minNo =0;
+      AidDecisionTemp = wxT("");
+      YawAlarmBroadcastContent = "0";
+      BoundaryAlarmBroadcastContent = "0";
+      TurnAlarmBroadcastContent = "0";
+      AidDecisionBroadcastContent = "0";
+
+}
+
+// static int do_play_wav(const char* cmd)
+// {
+//     char buff_wav[1024];
+//     snprintf(buff_wav, sizeof( buff_wav ), "play  '%s'.wav", cmd);
+//     int status = system(buff_wav);
+//     return status ;
+// }
+
+
+//zhh获取shell命令结果(当前账号用户名)
+char* username(void)
+{  
+    FILE *fp , *fp1;
+    fp = popen("whoami", "r");
+    if(!fp){
+
+        cout << "popen failed" << endl;
+        return 0;
+    }
+    int username_number = -1;
+    char ch = 0;
+    while( !feof(fp)){
+       ch=fgetc(fp);//从文件中读取一个字符 
+       if(ch != '\0'){
+            username_number ++;
+        }  
+    }
+
+    pclose(fp);
+    fp = NULL;
+
+    fp1 = popen("whoami", "r");
+    if(!fp1){
+        cout << "popen failed" << endl;
+        return 0;
+    }
+    char *username_buffer = new char[username_number]; 
+    fgets(username_buffer,username_number,fp1);
+    return username_buffer;
+
+    pclose(fp1);
+    fp1 = NULL;
+
+}
+
+
+//zhh
+static int do_play_wav(const char* cmd)
 {
     char buff[1024];
+    const char * Username_buffer;
+    Username_buffer = username();
 
-    snprintf(buff, sizeof( buff ), "espeak-ng  '%s' -s 20 -p 15 -v zh", cmd);
+    snprintf(buff, sizeof( buff ), "play  /home/'%s'/voicebag/'%s'.wav",Username_buffer, cmd);
 
     int status = system(buff);
     if (status == -1) {
@@ -225,7 +316,8 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
 {
     pParent = parent;
     pPlugIn = ppi;
-    long wstyle = wxDEFAULT_FRAME_STYLE;
+    //long wstyle = wxDEFAULT_FRAME_STYLE;
+    long wstyle = wxDEFAULT_FRAME_STYLE|wxSTAY_ON_TOP;
     m_pViewState = new ViewState(pos, size);
     if ( !wxFrame::Create ( parent, id, caption, pos, m_pViewState->GetWindowSize(), wstyle ) ) {
         return false;
@@ -248,103 +340,92 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     canvas->Add(m_pCanvas, 1, wxEXPAND);
     vbox->Add(canvas, 1, wxALL | wxEXPAND, 5);
 
-    ShipInfo = new wxGrid( panel, wxID_ANY, wxPoint(0,0), wxSize(600,270), 0 );
+
+//zhh1 huizhi biaoge
+    m_VHFTextCtrl = new wxTextCtrl( panel, wxID_ANY, wxT("VHF"), wxDefaultPosition, wxSize(900,30), wxTE_CENTRE|wxTE_READONLY );
+    vbox->Add( m_VHFTextCtrl, 0, wxALL, 5 );
+
+    m_VHFGrid = new wxGrid( panel, wxID_ANY, wxPoint(0,0), wxDefaultSize, 0 );
 
      // Grid
-	ShipInfo->CreateGrid( 4, 3);
-	ShipInfo->EnableEditing( true );
-	ShipInfo->EnableGridLines( true );
-	ShipInfo->SetGridLineColour( wxSystemSettings::GetColour( wxSYS_COLOUR_HIGHLIGHT ) );
-	ShipInfo->EnableDragGridSize( false );
-	ShipInfo->SetMargins( 0, 0 );
+	m_VHFGrid->CreateGrid( DEFAULT_GRID_ROWS_NUMBER, 5);
+	m_VHFGrid->EnableEditing( true );
+	m_VHFGrid->EnableGridLines( true );
+	//ShipInfo->SetGridLineColour( wxSystemSettings::GetColour( wxSYS_COLOUR_HIGHLIGHT ) );
+	m_VHFGrid->EnableDragGridSize( false );
+	m_VHFGrid->SetMargins( 0, 0 );
 
 	// Columns
-	ShipInfo->EnableDragColMove( false );
-	ShipInfo->EnableDragColSize( true );
-	ShipInfo->SetColLabelSize( 100 );
-	ShipInfo->SetColLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
-    ShipInfo->SetColSize(0,150);
-    ShipInfo->SetColSize(1,150);
-    ShipInfo->SetColSize(2,150);
-   // ShipInfo->SetColSize(3,130);
-    ShipInfo->SetColLabelValue(0,wxT("船舶编号"));
-    ShipInfo->SetColLabelValue(1,wxT("真航向"));
-    ShipInfo->SetColLabelValue(2,wxT("航速"));
-    //ShipInfo->SetColLabelValue(3,wxT("船舶类型"));
+	m_VHFGrid->EnableDragColMove( false );
+	m_VHFGrid->EnableDragColSize( true );
+	//ShipInfo->SetColLabelSize( 100 );
+	m_VHFGrid->SetColLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
+    m_VHFGrid->SetColSize(0,150);
+    m_VHFGrid->SetColSize(1,150);
+    m_VHFGrid->SetColSize(2,150);
+    m_VHFGrid->SetColSize(3,150);
+    m_VHFGrid->SetColSize(4,150);
+    m_VHFGrid->SetColLabelValue(0,wxT("MMSI"));
+    m_VHFGrid->SetColLabelValue(1,wxT("船舶位置"));
+    m_VHFGrid->SetColLabelValue(2,wxT("到达桥梁时间"));
+    m_VHFGrid->SetColLabelValue(3,wxT("偏航距离"));
+    m_VHFGrid->SetColLabelValue(4,wxT("碰撞危险时间"));
+    
     
 	// Rows
-	ShipInfo->EnableDragRowSize( true );
-	ShipInfo->SetRowLabelSize( 150);
-	ShipInfo->SetRowLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
-    
-  
-   
-   
-	 // Label Appearance
+	m_VHFGrid->EnableDragRowSize( true );
+	m_VHFGrid->SetRowLabelSize( 150);
+	m_VHFGrid->SetRowLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
 
 	 // Cell Defaults
-	 ShipInfo->SetDefaultCellAlignment( wxALIGN_CENTER, wxALIGN_CENTER);
-     //ShipInfo->Fit();
+	m_VHFGrid->SetDefaultCellAlignment( wxALIGN_CENTER, wxALIGN_CENTER); 
+
+	vbox->Add( m_VHFGrid, 0, wxALIGN_CENTER|wxALL|wxEXPAND, 5 );
+     
      
 
+    m_TPTextCtrl = new wxTextCtrl( panel, wxID_ANY, wxT("TP"), wxDefaultPosition, wxSize(900,30), wxTE_CENTRE|wxTE_READONLY );
+    vbox->Add( m_TPTextCtrl, 0, wxALL, 5 );
 
-	  vbox->Add( ShipInfo, 0, wxALL, 5 );
-       
-      
-     OwnShipDesion = new wxGrid( panel, wxID_ANY, wxPoint(0,0), wxSize(600,200), 0 );
-     OwnShipDesion->CreateGrid(4,1);
+    m_TPGrid = new wxGrid( panel, wxID_ANY, wxPoint(0,0), wxDefaultSize, 0 );
 
-     OwnShipDesion->SetColLabelValue(0,wxT("预警与辅助决策"));
+     // Grid
+	m_TPGrid->CreateGrid( DEFAULT_GRID_ROWS_NUMBER, 5);
+	m_TPGrid->EnableEditing( true );
+	m_TPGrid->EnableGridLines( true );
+	//ShipInfo->SetGridLineColour( wxSystemSettings::GetColour( wxSYS_COLOUR_HIGHLIGHT ) );
+	m_TPGrid->EnableDragGridSize( false );
+	m_TPGrid->SetMargins( 0, 0 );
+
+	// Columns
+	m_TPGrid->EnableDragColMove( false );
+	m_TPGrid->EnableDragColSize( true );
+	//ShipInfo->SetColLabelSize( 100 );
+	m_TPGrid->SetColLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
+    m_TPGrid->SetColSize(0,150);
+    m_TPGrid->SetColSize(1,150);
+    m_TPGrid->SetColSize(2,150);
+    m_TPGrid->SetColSize(3,150);
+    m_TPGrid->SetColSize(4,150);
+    m_TPGrid->SetColLabelValue(0,wxT("MMSI"));
+    m_TPGrid->SetColLabelValue(1,wxT("船舶位置"));
+    m_TPGrid->SetColLabelValue(2,wxT("到达桥梁时间"));
+    m_TPGrid->SetColLabelValue(3,wxT("偏航距离"));
+    m_TPGrid->SetColLabelValue(4,wxT("碰撞危险时间"));
     
-     OwnShipDesion->SetColSize(0,450);
+    
+	// Rows
+	m_TPGrid->EnableDragRowSize( true );
+	m_TPGrid->SetRowLabelSize( 150);
+	m_TPGrid->SetRowLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
 
-     OwnShipDesion->EnableDragRowSize( true );
-	 OwnShipDesion->SetRowLabelSize( 150);
-	 OwnShipDesion->SetRowLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
-     OwnShipDesion->SetRowLabelValue(0,wxT("偏航报警"));
-     OwnShipDesion->SetRowLabelValue(1,wxT("边界报警"));
-     OwnShipDesion->SetRowLabelValue(2,wxT("转向点提示"));
-     OwnShipDesion->SetRowLabelValue(3,wxT("辅助决策"));
+	 // Cell Defaults
+	m_TPGrid->SetDefaultCellAlignment( wxALIGN_CENTER, wxALIGN_CENTER); 
 
-     OwnShipDesion->SetDefaultCellAlignment( wxALIGN_CENTER, wxALIGN_CENTER);
-     
-
-     vbox->Add( OwnShipDesion, 0, wxALL, 5 );
-   
+	vbox->Add( m_TPGrid, 0, wxALIGN_CENTER|wxALL|wxEXPAND, 5 );
+//zhh1 huizhi biaoge
   
-    // Add controls
-    // wxStaticBox    *sb=new wxStaticBox(panel,wxID_ANY, _("Options"));
-    // wxStaticBoxSizer *controls = new wxStaticBoxSizer(sb, wxHORIZONTAL);
-    // wxStaticText *st1 = new wxStaticText(panel,wxID_ANY,_("Range"));
-    // controls->Add(st1,0,wxRIGHT,5);
-    // m_pRange = new wxComboBox(panel, cbRangeId, wxT(""));
-    // m_pRange->Append(wxT("0.25"));
-    // m_pRange->Append(wxT("0.5") );
-    // m_pRange->Append(wxT("1")   );
-    // m_pRange->Append(wxT("2")   );
-    // m_pRange->Append(wxT("4")   );
-    // m_pRange->Append(wxT("8")   );
-    // m_pRange->Append(wxT("12")  );
-    // m_pRange->Append(wxT("16")  );
-    // m_pRange->Append(wxT("32")  );
-    // m_pRange->SetSelection(pPlugIn->GetRadarRange());
-    // controls->Add(m_pRange);
-
-    // wxStaticText *st2 = new wxStaticText(panel,wxID_ANY,_("Nautical Miles"));
-    // controls->Add(st2,0,wxRIGHT|wxLEFT,5);
-
-    // m_pNorthUp = new wxCheckBox(panel, cbNorthUpId, _("North Up"));
-    // m_pNorthUp->SetValue(pPlugIn->GetRadarNorthUp());
-    // controls->Add(m_pNorthUp, 0, wxLEFT, 10);
-
-    // m_pBearingLine = new wxCheckBox(panel, cbBearingLineId, _("EBL"));
-    // m_pBearingLine->SetValue(false);
-    // controls->Add(m_pBearingLine, 0, wxLEFT, 10);
     
-    // m_pShowList = new wxButton(panel, btShowAisList, _("ShowAisList"));
-    // controls->Add(m_pShowList, 0, wxLEFT, 10);
-
-    // vbox->Add(controls, 0, wxEXPAND | wxALL, 5);
 
     //加一个语音播报窗口
     wxStaticBoxSizer* sbSizer1;
@@ -364,7 +445,7 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     wxBoxSizer *m_buttonBox;
     m_buttonBox = new wxBoxSizer( wxVERTICAL );
     
-    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("Option"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
+    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("Addroute"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_ConnectOptionButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5 );
     m_soundButton = new wxButton( panel, soundPlayId, wxT("Open"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_soundButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5  );
@@ -932,9 +1013,47 @@ void RadarFrame::SendData2Client(wxSocketBase *sock)
     sock->Write(buf, bufflen);
 }
 
+//zhh2
+void RadarFrame::OwnShipDecisionBroadcast(void){
+     
+// //version1 全部播报，如果数据变化较多，播报会来不及出现语音混杂情况
+//     // if(YawAlarmBroadcastContent != "0"){
+//     //     do_play_wav(YawAlarmBroadcastContent);
+//     // }
+//     // if(BoundaryAlarmBroadcastContent != "0"){
+//     //     do_play_wav(BoundaryAlarmBroadcastContent);
+//     // }
+//     // if(TurnAlarmBroadcastContent != "0"){
+//     //     do_play_wav(TurnAlarmBroadcastContent);
+//     // }
+//     // if(AidDecisionBroadcastContent != "0"){
+//     //     do_play_wav(AidDecisionBroadcastContent);
+//     // }
+//  //version2 辅助决策暂时不播，其他三项优先级-转向点>边界>偏航   
+//     if(TurnAlarmBroadcastContent != "0"){
+//         do_play_wav(TurnAlarmBroadcastContent);
+//     }
+//     else {
+//         if(BoundaryAlarmBroadcastContent != "0"){
+//             do_play_wav(BoundaryAlarmBroadcastContent);
+//         }
+//         else{
+//             if(YawAlarmBroadcastContent != "0"){
+//                 do_play_wav(YawAlarmBroadcastContent);
+//             }
+//         }
+//     }
+
+
+
+}
+
+
+//zhh3
 void RadarFrame::GetClientResult(wxSocketBase *sock)
 {
     TestLogger logtest("GetClientResult");
+   
 
     // Read the message
     unsigned int len;
@@ -946,197 +1065,206 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
     
     if (buf.data()){
         wxString sock_buffer;
+        m_VHFGrid->ClearGrid();
+        m_TPGrid->ClearGrid();
         sock_buffer = wxString::FromUTF8(buf.data());
-        {
-            m_textCtrl1->Clear();
-            // 处理张梁算法结果
-            // "2-10-2-R-M-L
-            std::vector<wxString> res = split(sock_buffer, wxT("-"));
-            // int i = 1; wxString s;
-            
-            
-            
-            // if (res[0] != "0"){
-            //     m_textCtrl1->AppendText(wxT("危险船舶MMSI："));
-            //     for (; i<=atoi(res[0].c_str()); i++){
-            //         m_textCtrl1->AppendText("|");
-            //         m_textCtrl1->AppendText(res[i]);
-            //         m_textCtrl1->AppendText("|");
-            //     }
-            //     m_textCtrl1->AppendText("\n");
-            //     s = wxT("预警操作：");
-            //     s.Append(_("  warm_daner->"));s.Append(res[i++]);
-            //     s.Append(_("  support->"));s.Append(res[i++]);
-            //     s.Append(_("  warm_yaw->"));s.Append(res[i++]);
-            //     m_textCtrl1->AppendText(s);
-            // }
-            // else{
-            //     m_textCtrl1->AppendText(wxT("------无危险船舶MMSI-----\n"));
-            //     s = wxT("预警操作：");
-            //     s.Append(_("  warm_daner->"));s.Append(res[i++]);
-            //     s.Append(_("  support->"));s.Append(res[i++]);
-            //     s.Append(_("  warm_yaw->") m_textCtrl1->AppendText(s);   );s.Append(res[i++]);    
-            //    
-            // }
-            int i = 1; 
-            int j;
-            // TODO:改成表格显示
-            if (res[0] == "out"){
-                OwnShipDesion->SetCellValue(0, 0, wxT("船舶在航道外"));
-            }
-            else if(res[0] == "not"){
-                OwnShipDesion->SetCellValue(0, 0, wxT("船舶在航道内但未顺航道行驶"));
+        
+        m_textCtrl1->Clear();
+        
+        // 处理张梁算法结果
+        std::vector<wxString> res = split(sock_buffer, wxT("*"));
+        std::vector<wxString> VHFres = split(res[0],wxT("-"));
+        std::vector<wxString> TPres = split(res[1],wxT("-"));
+
+        //VHF表格显示
+        int VHFres_i = 2;
+        int VHFres_j = 0;
+        wxString VHFresult_warm_time;
+        wxString VHFresult_warm_yaw; 
+        wxString VHFresult_warm_collision;
+        
+        if( m_VHFGrid->GetNumberRows() > DEFAULT_GRID_ROWS_NUMBER) { 
+            if( atoi(VHFres[1].c_str()) > m_VHFGrid->GetNumberRows()){
+
+                m_VHFGrid -> InsertRows(atoi(VHFres[1].c_str()), atoi(VHFres[1].c_str()) - m_VHFGrid->GetNumberRows(),true);
             }
 
-            else{
-                int k = atoi(res[0].c_str());
-                
-                if(k != ShipInfo->GetNumberRows()){
-                    ShipInfo->ClearGrid();
-                    if(k > ShipInfo->GetNumberRows()){
-
-                     ShipInfo->InsertRows(k,k - ShipInfo->GetNumberRows(),true);
-                    }
-
+            else if ( atoi(VHFres[1].c_str()) < m_VHFGrid->GetNumberRows()){
+                if( atoi(VHFres[1].c_str()) > DEFAULT_GRID_ROWS_NUMBER){
+                    m_VHFGrid -> DeleteRows(atoi(VHFres[1].c_str()), m_VHFGrid->GetNumberRows() - atoi(VHFres[1].c_str()),true);
                 }
-                if (k == 0){
-
-                    ShipInfo->SetCellValue(0, 0 , wxT("无危险船舶"));
-                }
-                else if(k > 0 ){
-
-                     for (; i <= k; i++){
-
-                     j = (i-1) * 3 ;
-                     ShipInfo->SetCellValue(i-1, 0,	res[j+1]);
-                     ShipInfo->SetCellValue(i-1, 1,	res[j+2]);
-                     ShipInfo->SetCellValue(i-1, 2,	res[j+3]);
-                    }
-                    i = j+4;
-
+                else if(atoi(VHFres[1].c_str()) < DEFAULT_GRID_ROWS_NUMBER){
+                    m_VHFGrid -> DeleteRows(DEFAULT_GRID_ROWS_NUMBER, atoi(VHFres[1].c_str()) - DEFAULT_GRID_ROWS_NUMBER,true );
                 }
                 
             }
-            
-
-                
-            wxString YawAlarm;//偏航报警
-
-            if(res[i]=="R"){
-                YawAlarm.append(wxT("R"));
-                do_play("niyixiangyoucepianhang");
-            }
-            else if(res[i]=="L"){
-                YawAlarm.append(wxT("L"));
-                do_play("niyixiangzuocepianhang");
-            }
-             else if(res[i]=="K")
-                YawAlarm.append(wxT("K"));
-    
-            else{    
-            }
-            i++;
-
-            if(res[i]=="0")
-                YawAlarm.append(wxT("0"));
-
-            else 
-                YawAlarm.append(res[i]);
-             
-            OwnShipDesion->SetCellValue(0, 0, YawAlarm);
-            i++;
-
-
-             wxString BoundaryAlarm; //边界报警
-
-            if(res[i]=="R"){
-                BoundaryAlarm.append(wxT("R"));
-                do_play("chuanbokaojinhangdaoyouce");
-            }
-            else if(res[i]=="L"){
-                BoundaryAlarm.append(wxT("L"));
-                do_play("chuanbokaojinhangdaozuoce");
-            }
-             else if(res[i]=="K")
-                BoundaryAlarm.append(wxT("K"));
-    
-            else{    
-            }
-            i++;
-
-            if(res[i]=="0")
-                BoundaryAlarm.append(wxT("0"));
-
-            else 
-                BoundaryAlarm.append(res[i]);
-             
-            OwnShipDesion->SetCellValue(1, 0, BoundaryAlarm);
-            i++;
-            
-            wxString TurnAlarm;//转向报警
-            char TurnAlarmBuff[1024];
-            if(res[i]=="N")
-                TurnAlarm.append(wxT("N"));
-
-            else{
-                TurnAlarm.append(res[i]);
-                sprintf(TurnAlarmBuff,"%dmiaohouzhuanxiang",atoi(res[0].c_str()));
-                do_play(TurnAlarmBuff);
-            } 
-            OwnShipDesion->SetCellValue(2, 0, TurnAlarm);
-            i++;
-            
-            wxString AidDecisionMaking; //辅助决策
-            if(res[i]=="R"){
-                AidDecisionMaking.append(wxT("右转向"));
-                do_play("fujinyouweixianchuanbo");
-                do_play("fjianyixiangyouzhuanxiang");
-            }
-             else if(res[i]=="L"){
-                AidDecisionMaking.append(wxT("左转向"));
-                do_play("fujinyouweixianchuanbo");
-                do_play("fjianyixiangzuozhuanxiang");
-             }
-             else if(res[i]=="K")
-                AidDecisionMaking.append(wxT("保向"));
-            
-             else if(res[i]=="0")
-                AidDecisionMaking.append(wxT("暂无"));
-
-             else if(res[i]=="D"){
-                AidDecisionMaking.append(wxT("无法避让"));
-                do_play("fujinyouweixianchuanbo");
-                do_play("wufabirang");
-             }
-            else{      
-            }
-            i++;
-
-            if(res[i]=="M"){
-                AidDecisionMaking.append(wxT("减速"));
-                do_play("bingjiansuxingshi");
-            }
-            else if(res[i]=="A"){
-                AidDecisionMaking.append(wxT("加速"));
-                do_play("bingjiasuxingshi");
-            }
-             else if(res[i]=="K")
-                AidDecisionMaking.append(wxT("保速"));
-            
-             else if(res[i]=="0")
-                AidDecisionMaking.append(wxT("暂无"));
-
-             else if(res[i]=="D"){
-                AidDecisionMaking.append(wxT("无法让"));
-                do_play("wufarangsu");
-             }
-            else{      
-            }
-            OwnShipDesion->SetCellValue(3, 0, AidDecisionMaking);
-            
-           
-            
         }
+        else if(atoi(VHFres[1].c_str()) > m_VHFGrid->GetNumberRows()){
+
+            m_VHFGrid->InsertRows(atoi(VHFres[1].c_str()), atoi(VHFres[1].c_str()) - m_VHFGrid->GetNumberRows(),true);
+        }
+
+        if ( atoi(VHFres[1].c_str()) == 0){
+            m_VHFGrid->SetCellValue(0, 0, wxT("无危险船舶MMSI"));
+        }
+        else{
+
+            while( VHFres_j < atoi(VHFres[1].c_str()) ){
+
+                VHFresult_warm_time.clear();
+                VHFresult_warm_yaw.clear();
+                VHFresult_warm_collision.clear();
+
+                //mmsi
+                m_VHFGrid->SetCellValue(VHFres_j, 0, VHFres[VHFres_i]); 
+                VHFres_i ++;
+
+                //船舶位置
+                if( VHFres[VHFres_i] == "IN" ) { 
+                    m_VHFGrid->SetCellValue(VHFres_j, 1, wxT("顺航道行驶船舶") );
+                }
+                else if( VHFres[VHFres_i] == "NOT" ){
+                    m_VHFGrid->SetCellValue(VHFres_j, 1, wxT("非顺航道行驶船舶") );
+                }
+                else if( VHFres[VHFres_i] == "OUT" ){
+                    m_VHFGrid->SetCellValue(VHFres_j, 1, wxT("航道外船舶") );
+                }
+                else if( VHFres[VHFres_i] == "WF" ){
+                    m_VHFGrid->SetCellValue(VHFres_j, 1, wxT("码头区域") );
+                }
+                VHFres_i ++;
+
+                //到达桥梁时间 
+                VHFresult_warm_time.append( VHFres[VHFres_i] );
+                VHFresult_warm_time.append( wxT("秒") );
+                m_VHFGrid->SetCellValue(VHFres_j, 2, VHFresult_warm_time );
+                VHFres_i++;
+
+                //偏航距离
+                if( VHFres[VHFres_i] == "R" )
+                {
+                    VHFresult_warm_yaw.append( wxT("向右偏航") );
+                    VHFresult_warm_yaw.append( VHFres[VHFres_i+1] );
+                    VHFresult_warm_yaw.append( wxT("米"));
+                }
+                else if( VHFres[VHFres_i] == "L" )
+                {
+                    VHFresult_warm_yaw.append( wxT("向左偏航") );
+                    VHFresult_warm_yaw.append( VHFres[VHFres_i+1] );
+                    VHFresult_warm_yaw.append( wxT("米"));
+                }
+                else if( VHFres[VHFres_i] == "K" )
+                {
+                    VHFresult_warm_yaw.append( wxT("未偏航") );           
+                }
+                m_VHFGrid->SetCellValue(VHFres_j, 3, VHFresult_warm_yaw );
+                VHFres_i = VHFres_i + 2;
+
+                //碰撞危险时间
+                VHFresult_warm_collision.append( VHFres[VHFres_i] );
+                VHFresult_warm_collision.append( wxT("秒") );
+                m_VHFGrid->SetCellValue(VHFres_j, 4, VHFresult_warm_collision );
+                VHFres_j ++;
+                VHFres_i ++;
+            
+            }
+        }
+        
+
+        //TP表格显示
+        int TPres_i = 2;
+        int TPres_j = 0;
+        wxString TPresult_warm_time;
+        wxString TPresult_warm_yaw; 
+        wxString TPresult_warm_collision;
+        
+        if( m_TPGrid->GetNumberRows() > DEFAULT_GRID_ROWS_NUMBER) { 
+            if( atoi(TPres[1].c_str()) > m_TPGrid->GetNumberRows()){
+
+                m_TPGrid -> InsertRows(atoi(TPres[1].c_str()), atoi(TPres[1].c_str()) - m_TPGrid->GetNumberRows(),true);
+            }
+
+            else if ( atoi(TPres[1].c_str()) < m_TPGrid->GetNumberRows()){
+                if( atoi(TPres[1].c_str()) > DEFAULT_GRID_ROWS_NUMBER){
+                    m_TPGrid -> DeleteRows(atoi(TPres[1].c_str()), m_TPGrid->GetNumberRows() - atoi(TPres[1].c_str()),true);
+                }
+                else if(atoi(TPres[1].c_str()) < DEFAULT_GRID_ROWS_NUMBER){
+                    m_TPGrid -> DeleteRows(DEFAULT_GRID_ROWS_NUMBER, atoi(TPres[1].c_str()) - DEFAULT_GRID_ROWS_NUMBER,true );
+                }
+                
+            }
+        }
+        else if(atoi(TPres[1].c_str()) > m_TPGrid->GetNumberRows()){
+
+            m_TPGrid->InsertRows(atoi(TPres[1].c_str()), atoi(TPres[1].c_str()) - m_TPGrid->GetNumberRows(),true);
+        }
+
+        if ( atoi(TPres[1].c_str()) == 0){
+            m_TPGrid->SetCellValue(0, 0, wxT("无危险船舶MMSI"));
+        }
+        else{
+            while( TPres_j < atoi(TPres[1].c_str()) ){
+
+                TPresult_warm_time.clear();
+                TPresult_warm_yaw.clear();
+                TPresult_warm_collision.clear();
+
+                //mmsi
+                m_TPGrid->SetCellValue(TPres_j, 0, TPres[TPres_i++]); 
+
+                //船舶位置
+                if( TPres[TPres_i] == "IN" ) { 
+                    m_TPGrid->SetCellValue( TPres_j, 1, wxT("顺航道行驶船舶") );
+                }
+                else if( TPres[TPres_i] == "NOT" ){
+                    m_TPGrid->SetCellValue( TPres_j, 1, wxT("非顺航道行驶船舶") );
+                }
+                else if( TPres[TPres_i] == "OUT" ){
+                    m_TPGrid->SetCellValue( TPres_j, 1, wxT("航道外船舶") );
+                }
+                else if( TPres[TPres_i] == "WF" ){
+                    m_TPGrid->SetCellValue(TPres_j, 1, wxT("码头区域") );
+                }
+                TPres_i ++;
+
+                //到达桥梁时间 
+                TPresult_warm_time.append( TPres[TPres_i] );
+                TPresult_warm_time.append( wxT("秒") );
+                m_TPGrid->SetCellValue(TPres_j, 2, TPresult_warm_time );
+                TPres_i ++;
+
+                //偏航距离
+                if( TPres[TPres_i] == "R" )
+                {
+                    TPresult_warm_yaw.append( wxT("向右偏航") );
+                    TPresult_warm_yaw.append( TPres[TPres_i+1] );
+                    TPresult_warm_yaw.append( wxT("米"));
+                }
+                else if( TPres[TPres_i] == "L" )
+                {
+                    TPresult_warm_yaw.append( wxT("向左偏航") );
+                    TPresult_warm_yaw.append( TPres[TPres_i+1] );
+                    TPresult_warm_yaw.append( wxT("米"));
+                }
+                else if( TPres[TPres_i] == "K" )
+                {
+                    TPresult_warm_yaw.append( wxT("未偏航") );           
+                }
+                m_TPGrid->SetCellValue(TPres_j, 3, TPresult_warm_yaw );
+                TPres_i = TPres_i + 2;
+
+                //碰撞危险时间
+                TPresult_warm_collision.append( TPres[TPres_i] );
+                TPresult_warm_collision.append( wxT("秒") );
+                m_TPGrid->SetCellValue(TPres_j, 4, TPresult_warm_collision );
+                TPres_i ++;
+                TPres_j ++;
+            
+            }
+        }
+
+        
+
         wxString s = "Get Message and Prase Right";
         unsigned int bufflen = s.size();
         wxCharBuffer buff(bufflen);
@@ -1145,7 +1273,9 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
         sock->Write(&bufflen, 4);
         sock->Write(buff, bufflen);
         return ;
-    }
+    }    
+
+    
     
     wxString s = "Something wrong!";
     unsigned int bufflen = s.size();
@@ -1156,6 +1286,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
     sock->Write(buff, bufflen);
     
 }
+
 
 void RadarFrame::Test3(wxSocketBase *sock)
 {

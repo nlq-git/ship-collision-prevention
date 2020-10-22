@@ -32,6 +32,7 @@
 #include "wx/socket.h"
 #include "wx/wxprec.h"
 #include "wx/dcbuffer.h"
+#include <wx/textctrl.h>
 #include <wx/grid.h>
 #include "Target.h"
 
@@ -46,8 +47,8 @@
 #define MIN_RADIUS                  150
 #define TEXT_MARGIN                 5
 #define SPACER_MARGIN               5
-#define DEFAULT_SHIPINFO_GRID_ROWS_NUMBER 5 //zhh
-#define CLIENT_RESULT_PLAY_INTERVAL 25 //跟张梁z商定的重复播报间隔
+#define DEFAULT_GRID_ROWS_NUMBER 5 //zhh
+#define CLIENT_RESULT_PLAY_INTERVAL 10 //跟张梁商定的重复播报间隔
 #ifdef WIN32
     #define   MyFit(a)    Fit(a)
 #else
@@ -120,12 +121,12 @@ public:
     wxString BoundaryAlarm;
     wxString TurnAlarm;
     wxString AidDecisionMaking; 
-//zhh0
+
 
 private:
     void OnClose(wxCloseEvent& event);
     void OnRange( wxCommandEvent& event );
-	void OnNorthUp( wxCommandEvent& eMyLabelent );
+	void OnNorthUp( wxCommandEvent& event );
     void OnBearingLine( wxCommandEvent& event );
     void OnTimer( wxTimerEvent& event );
     void OnMove( wxMoveEvent& event );
@@ -165,11 +166,15 @@ private:
     double                  m_Ebl;
     int                     m_Range;
     ViewState              *m_pViewState;
-
-    wxGrid                 *ShipInfo;
-    wxGrid                 *OwnShipDesion;
+     wxTextCtrl             *m_VHFTextCtrl;
+    wxGrid                 *m_VHFGrid;
+    wxTextCtrl             *m_TPTextCtrl;
+    wxGrid                 *m_TPGrid;
+    wxGrid               *m_Grid;
+     
 
     wxButton               *m_pShowList;
+    
     wxTextCtrl             *m_textCtrl1;
     wxButton               *m_soundButton;
     wxButton               *m_ConnectOptionButton;
@@ -184,12 +189,8 @@ private:
     void OnSocketEvent(wxSocketEvent& event);
     void UpdateStatusBar();
 
-    
-     
-
     void SendData2Client(wxSocketBase *sock);
-    
-    void GetClientResult(wxSocketBase *sock);//zhh
+    void GetClientResult(wxSocketBase *sock); //zhh
     void Test3(wxSocketBase *sock);
 
     void ReadDataFromFile(wxCommandEvent& event);//nlq 
