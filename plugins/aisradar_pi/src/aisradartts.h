@@ -48,6 +48,8 @@
 #define SPACER_MARGIN               5
 #define DEFAULT_SHIPINFO_GRID_ROWS_NUMBER 5 //zhh
 #define CLIENT_RESULT_PLAY_INTERVAL 25 //跟张梁z商定的重复播报间隔
+
+
 #ifdef WIN32
     #define   MyFit(a)    Fit(a)
 #else
@@ -104,6 +106,10 @@ class RadarFrame: public wxFrame
 public:
     RadarFrame( );
     ~RadarFrame( );
+
+    
+    
+
     void Init();
     void Config(int min_radius);
     bool Create(  wxWindow *parent, aisradar_pi *ppi, wxWindowID id = wxID_ANY,
@@ -120,6 +126,9 @@ public:
     wxString BoundaryAlarm;
     wxString TurnAlarm;
     wxString AidDecisionMaking; 
+
+    
+
 //zhh0
 
 private:

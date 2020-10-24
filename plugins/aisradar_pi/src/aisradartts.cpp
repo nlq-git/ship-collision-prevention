@@ -16,7 +16,8 @@
  *                                                                         *
  *   This program is distributed in the hope that it will be useful,       *
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PUversion 2 of the License, or     *
+ *   (at your option) any later version.  RPOSE.  See the         *
  *   GNU General Public License for more details.                          *
  *                                                                         *
  *   You should have received a copy of the GNU General Public License     *
@@ -42,6 +43,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <fstream>
@@ -101,6 +103,15 @@ const char * YawAlarmBroadcastContent;
 const char * BoundaryAlarmBroadcastContent;
 const char * TurnAlarmBroadcastContent;
 const char * AidDecisionBroadcastContent;
+
+const char *YawAlarmFileName;
+const char *YawAlarmText;
+const char *BoundaryAlarmFileName;
+const char *BoundaryAlarmText;
+const char *TurnAlarmFileName;
+const char *TurnAlarmText;
+const char *AidDecisionMakingFileName;
+const char *AidDecisionMakingText;
 //zhh0
 
 
@@ -193,31 +204,60 @@ char* username(void)
 
 
 //zhh
-static int do_play_wav(const char* cmd)
+
+//zhh_tts
+static int do_play_wav_tts(const char* filename ,const char* text )
 {
-    char buff[1024];
+    char change_directory_buff[1024];
+    char create_buff[1024];
+    char play_buff[1024];
+    
     const char * Username_buffer;
     Username_buffer = username();
 
-    snprintf(buff, sizeof( buff ), "play  /home/'%s'/voicebag/'%s'.wav",Username_buffer, cmd);
+    snprintf(create_buff, sizeof( create_buff ), "/home/%s/Desktop/voiceplay/tts_offline_sample '%s.wav' '%s'", Username_buffer, filename, text);
 
-    int status = system(buff);
-    if (status == -1) {
-        wxLogWarning("Cannot fork process running %s", buff);
+    int create_status = system(create_buff);
+    if (create_status == -1) {
+        wxLogWarning("Cannot fork process running %s", create_buff);
         return -1;
     }
-    if (WIFEXITED(status)) {
-        status = WEXITSTATUS(status);
-        if (status != 0) {
+    if (WIFEXITED(create_status)) {
+        create_status = WEXITSTATUS(create_status);
+        if (create_status != 0) {
             wxLogWarning("Exit code %d from command %s",
-                status, buff);
+                create_status, create_buff);
         }
     } else {
         wxLogWarning("Strange return code %d (0x%x) running %s",
-                     status, status, buff);
+                     create_status, create_status, create_buff);
     }
-    return status;
+    //sleep(2);
+
+    snprintf(play_buff, sizeof( play_buff ), "play /home/%s/ship-collision-prevention/build/%s.wav", Username_buffer,  filename);
+
+    int play_status = system(play_buff);
+    if (play_status == -1) {
+        wxLogWarning("Cannot fork process running %s", play_buff);
+        return -1;
+    }
+    if (WIFEXITED(play_status)) {
+        play_status = WEXITSTATUS(play_status);
+        if (play_status != 0) {
+            wxLogWarning("Exit code %d from command %s",
+                play_status, play_status);
+        }
+    } else {
+        wxLogWarning("Strange return code %d (0x%x) running %s",
+                     play_status, play_status, play_buff);
+    }
+    sleep(2);
+
+    return create_status||play_status;
+
+    //return create_status;
 }
+//zhh_tts
 
 void executeCMD(const char *cmd, char *result)   
 {   
@@ -407,39 +447,7 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
      
 //zhh1 huizhi biaoge
   
-    // Add controls
-    // wxStaticBox    *sb=new wxStaticBox(panel,wxID_ANY, _("Options"));
-    // wxStaticBoxSizer *controls = new wxStaticBoxSizer(sb, wxHORIZONTAL);
-    // wxStaticText *st1 = new wxStaticText(panel,wxID_ANY,_("Range"));
-    // controls->Add(st1,0,wxRIGHT,5);
-    // m_pRange = new wxComboBox(panel, cbRangeId, wxT(""));
-    // m_pRange->Append(wxT("0.25"));
-    // m_pRange->Append(wxT("0.5") );
-    // m_pRange->Append(wxT("1")   );
-    // m_pRange->Append(wxT("2")   );
-    // m_pRange->Append(wxT("4")   );
-    // m_pRange->Append(wxT("8")   );
-    // m_pRange->Append(wxT("12")  );
-    // m_pRange->Append(wxT("16")  );
-    // m_pRange->Append(wxT("32")  );
-    // m_pRange->SetSelection(pPlugIn->GetRadarRange());
-    // controls->Add(m_pRange);
-
-    // wxStaticText *st2 = new wxStaticText(panel,wxID_ANY,_("Nautical Miles"));
-    // controls->Add(st2,0,wxRIGHT|wxLEFT,5);
-
-    // m_pNorthUp = new wxCheckBox(panel, cbNorthUpId, _("North Up"));
-    // m_pNorthUp->SetValue(pPlugIn->GetRadarNorthUp());
-    // controls->Add(m_pNorthUp, 0, wxLEFT, 10);
-
-    // m_pBearingLine = new wxCheckBox(panel, cbBearingLineId, _("EBL"));
-    // m_pBearingLine->SetValue(false);
-    // controls->Add(m_pBearingLine, 0, wxLEFT, 10);
     
-    // m_pShowList = new wxButton(panel, btShowAisList, _("ShowAisList"));
-    // controls->Add(m_pShowList, 0, wxLEFT, 10);
-
-    // vbox->Add(controls, 0, wxEXPAND | wxALL, 5);
 
     //加一个语音播报窗口
     wxStaticBoxSizer* sbSizer1;
@@ -459,7 +467,7 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     wxBoxSizer *m_buttonBox;
     m_buttonBox = new wxBoxSizer( wxVERTICAL );
     
-    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("添加航道"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
+    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("Addroute"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_ConnectOptionButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5 );
     m_soundButton = new wxButton( panel, soundPlayId, wxT("Open"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_soundButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5  );
@@ -1044,19 +1052,145 @@ void RadarFrame::OwnShipDecisionBroadcast(void){
     //     do_play_wav(AidDecisionBroadcastContent);
     // }
  //version2 辅助决策暂时不播，其他三项优先级-转向点>边界>偏航   
-    if(TurnAlarmBroadcastContent != "0"){
-        do_play_wav(TurnAlarmBroadcastContent);
-    }
-    else {
-        if(BoundaryAlarmBroadcastContent != "0"){
-            do_play_wav(BoundaryAlarmBroadcastContent);
+    // if(TurnAlarmBroadcastContent != "无需播报"){
+    //     do_play_wav(TurnAlarmBroadcastContent);
+    // }
+    // else {
+    //     if(BoundaryAlarmBroadcastContent != "无需播报"){
+    //         do_play_wav(BoundaryAlarmBroadcastContent);
+    //     }
+    //     else{
+    //         if(YawAlarmBroadcastContent != "无需播报"){
+    //             do_play_wav(YawAlarmBroadcastContent);
+    //         }
+    //     }
+    // }
+
+    if(YawAlarmBroadcastContent != "无需播报")
+    {
+        if (YawAlarmBroadcastContent == "YawAlarmRight")
+        {
+            YawAlarmFileName = "YawAlarmRight";
+            YawAlarmText = "您已向右侧偏航。。。";
+            do_play_wav_tts(YawAlarmFileName, YawAlarmText);
         }
-        else{
-            if(YawAlarmBroadcastContent != "0"){
-                do_play_wav(YawAlarmBroadcastContent);
-            }
+        else if (YawAlarmBroadcastContent == "YawAlarmLeft")
+        {
+            YawAlarmFileName = "YawAlarmLeft";
+            YawAlarmText = "您已向左侧偏航。。。";
+            do_play_wav_tts(YawAlarmFileName, YawAlarmText);
+        }
+         
+    }
+    //sleep(8);
+
+    if(BoundaryAlarmBroadcastContent != "无需播报")
+    {
+        if (BoundaryAlarmBroadcastContent == "BoundaryAlarmRight")
+        {
+            BoundaryAlarmFileName = "BoundaryAlarmRight";
+            BoundaryAlarmText = "船舶靠近航道右侧。。。";
+            do_play_wav_tts(BoundaryAlarmFileName, BoundaryAlarmText);
+        }
+        else if (BoundaryAlarmBroadcastContent == "BoundaryAlarmLeft")
+        {
+            BoundaryAlarmFileName = "BoundaryAlarmLeft";
+            BoundaryAlarmText = "船舶靠近航道左侧。。。";
+            do_play_wav_tts(BoundaryAlarmFileName, BoundaryAlarmText);
         }
     }
+    //sleep(8);
+
+    if(TurnAlarmBroadcastContent != "无需播报")
+    {
+        if(TurnAlarmBroadcastContent == "TurnAlarm8min")
+        {
+            TurnAlarmFileName = "TurnAlarm8min";
+            TurnAlarmText = "8分钟后转向。。。";
+            do_play_wav_tts(TurnAlarmFileName, TurnAlarmText);
+        }
+        else if(TurnAlarmBroadcastContent == "TurnAlarm5min")
+        {
+            TurnAlarmFileName = "TurnAlarm5min";
+            TurnAlarmText = "5分钟后转向。。。";
+            do_play_wav_tts(TurnAlarmFileName, TurnAlarmText);
+        }
+        else if(TurnAlarmBroadcastContent == "TurnAlarm2min")
+        {
+            TurnAlarmFileName = "TurnAlarm2min";
+            TurnAlarmText = "两分钟后转向。。。";
+            do_play_wav_tts(TurnAlarmFileName, TurnAlarmText);
+        }
+    }
+    //sleep(8);
+
+    if(AidDecisionBroadcastContent != "无需播报")
+    {
+        if(AidDecisionBroadcastContent == "AidDecisionMakingBranchingRiver")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingBranchingRiver";
+            AidDecisionMakingText = "船舶处于汊河口，注意航行。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingDanger")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingDanger";
+            AidDecisionMakingText = "危险，请注意避让。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingKeepMinus")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingKeepMinus";
+            AidDecisionMakingText = "附近有危险船舶，请保持方向并减速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingKeepAdd")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingKeepAdd";
+            AidDecisionMakingText = "附近有危险船舶，请保持方向并加速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingLeftMinus")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingLeftMinus";
+            AidDecisionMakingText = "附近有危险船舶，建议向左转向,并减速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingLeftAdd")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingLeftAdd";
+            AidDecisionMakingText = "附近有危险船舶，建议向左转向,并加速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingLeftKeep")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingLeftKeep";
+            AidDecisionMakingText = "附近有危险船舶，建议向左转向,并保速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingRightMinus")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingRightMinus";
+            AidDecisionMakingText = "附近有危险船舶，建议向右转向,并减速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingRightAdd")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingRightAdd";
+            AidDecisionMakingText = "附近有危险船舶，建议向右转向,并加速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        else if(AidDecisionBroadcastContent == "AidDecisionMakingRightKeep")
+        {
+            AidDecisionMakingFileName = "AidDecisionMakingRightKeep";
+            AidDecisionMakingText = "附近有危险船舶，建议向右转向,并保速行驶。。。";
+            do_play_wav_tts(AidDecisionMakingFileName, AidDecisionMakingText);
+        }
+        //sleep(8);
+        
+        
+    }
+
 
 
 
@@ -1088,32 +1222,6 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
             // 处理张梁算法结果
             // "2-10-2-R-M-L
             std::vector<wxString> res = split(sock_buffer, wxT("-"));
-            // int i = 1; wxString s;
-            
-            
-            
-            // if (res[0] != "0"){
-            //     m_textCtrl1->AppendText(wxT("危险船舶MMSI："));
-            //     for (; i<=atoi(res[0].c_str()); i++){
-            //         m_textCtrl1->AppendText("|");
-            //         m_textCtrl1->AppendText(res[i]);
-            //         m_textCtrl1->AppendText("|");
-            //     }
-            //     m_textCtrl1->AppendText("\n");
-            //     s = wxT("预警操作：");
-            //     s.Append(_("  warm_daner->"));s.Append(res[i++]);
-            //     s.Append(_("  support->"));s.Append(res[i++]);
-            //     s.Append(_("  warm_yaw->"));s.Append(res[i++]);
-            //     m_textCtrl1->AppendText(s);
-            // }
-            // else{
-            //     m_textCtrl1->AppendText(wxT("------无危险船舶MMSI-----\n"));
-            //     s = wxT("预警操作：");
-            //     s.Append(_("  warm_daner->"));s.Append(res[i++]);
-            //     s.Append(_("  support->"));s.Append(res[i++]);
-            //     s.Append(_("  warm_yaw->") m_textCtrl1->AppendText(s);   );s.Append(res[i++]);    
-            //    
-            // }
             int i = 1; 
             int j;
             // TODO:改成表格显示
@@ -1193,7 +1301,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                         YawAlarmBroadcastContent = "YawAlarmRight";
                     }
                     else{
-                        YawAlarmBroadcastContent = "0";
+                        YawAlarmBroadcastContent = "无需播报";
                     }
                     YawAlarmLeftNo = 0;
                     YawAlarmRightNo ++;
@@ -1206,7 +1314,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                         YawAlarmBroadcastContent = "YawAlarmLeft";
                     }
                     else{
-                        YawAlarmBroadcastContent = "0";
+                        YawAlarmBroadcastContent = "无需播报";
                     }
                     YawAlarmRightNo = 0;
                     YawAlarmLeftNo ++;
@@ -1214,13 +1322,13 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                 }
                 else if(res[i]=="K"){
                     YawAlarm.append(wxT("正常航行"));
-                    YawAlarmBroadcastContent = "0";
+                    YawAlarmBroadcastContent = "无需播报";
                     YawAlarmLeftNo = 0;
                     YawAlarmRightNo = 0;
                 }
 
                 else{
-                    YawAlarmBroadcastContent = "0";    
+                    YawAlarmBroadcastContent = "无需播报";    
                     YawAlarmLeftNo = 0;
                     YawAlarmRightNo = 0;
                 }
@@ -1251,7 +1359,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                         BoundaryAlarmBroadcastContent = "BoundaryAlarmRight";
                     }
                     else{
-                        BoundaryAlarmBroadcastContent = "0";
+                        BoundaryAlarmBroadcastContent = "无需播报";
                     }
                     BoundaryAlarmLeftNo = 0;
                     BoundaryAlarmRightNo ++;
@@ -1265,7 +1373,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                         BoundaryAlarmBroadcastContent = "BoundaryAlarmLeft";
                     }
                     else{
-                        BoundaryAlarmBroadcastContent = "0";
+                        BoundaryAlarmBroadcastContent = "无需播报";
                     }
                     BoundaryAlarmLeftNo ++;
                     BoundaryAlarmRightNo = 0;
@@ -1273,12 +1381,12 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                 }
                 else if(res[i]=="K"){
                     BoundaryAlarm.append(wxT("正常航行"));
-                    BoundaryAlarmBroadcastContent = "0";
+                    BoundaryAlarmBroadcastContent = "无需播报";
                     BoundaryAlarmLeftNo = 0;
                     BoundaryAlarmRightNo = 0;
                 }
                 else{ 
-                    BoundaryAlarmBroadcastContent = "0";    
+                    BoundaryAlarmBroadcastContent = "无需播报";    
                     BoundaryAlarmLeftNo = 0;
                     BoundaryAlarmRightNo = 0;
                 }
@@ -1298,7 +1406,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                 char TurnAlarmBuff[1024];
                 if(res[i]=="N"){
                     TurnAlarm.append(wxT("正常航行"));
-                    TurnAlarmBroadcastContent = "0";
+                    TurnAlarmBroadcastContent = "无需播报";
                 }
                 else{
                     TurnAlarm.append(res[i]);
@@ -1314,7 +1422,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                             TurnAlarm2minNo = 0;
                         }
                         else{
-                            TurnAlarmBroadcastContent = "0";
+                            TurnAlarmBroadcastContent = "无需播报";
                         }
                     }
 
@@ -1328,7 +1436,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                             TurnAlarm2minNo = 0;
                         }
                         else{
-                            TurnAlarmBroadcastContent = "0";
+                            TurnAlarmBroadcastContent = "无需播报";
                         }
                     }
                     else if ( (atoi(res[i].c_str())>=105) && (atoi(res[i].c_str())<=135) )
@@ -1341,7 +1449,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                             TurnAlarm2minNo = 1;
                         }
                         else{
-                            TurnAlarmBroadcastContent = "0";
+                            TurnAlarmBroadcastContent = "无需播报";
                         }
                     }
                     else  
@@ -1349,7 +1457,7 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                         TurnAlarm8minNo = 0;
                         TurnAlarm5minNo = 0;
                         TurnAlarm2minNo = 0;
-                        TurnAlarmBroadcastContent = "0";
+                        TurnAlarmBroadcastContent = "无需播报";
 
                     }
                     
@@ -1451,12 +1559,12 @@ void RadarFrame::GetClientResult(wxSocketBase *sock)
                     }
 
                     else{          
-                        AidDecisionBroadcastContent = "0";     
+                        AidDecisionBroadcastContent = "无需播报";     
                     }
                 
                 }
                 else{
-                    AidDecisionBroadcastContent = "0";
+                    AidDecisionBroadcastContent = "无需播报";
                 }
             }
             AidDecisionTemp = AidDecisionMaking;
@@ -1768,8 +1876,7 @@ void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius
     //     dc.DrawText(wxString::Format(_T("%3.1d\u00B0"),(int)(m_Ebl+offset)%360),tx,ty);
     // }
 }
-void RadarFrame::ReadDataFromFile(wxCommandEvent &event)
-{
+void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
     bool yellowline, greenline, megentaline;
     ifstream data;
     wxArrayString allpaths;
@@ -1777,74 +1884,79 @@ void RadarFrame::ReadDataFromFile(wxCommandEvent &event)
     wxString wildcard = wxT("TXT files (*.txt)|*.txt");
     wxString defaultFilename = wxEmptyString;
     wxFileDialog dialog(this, "Test for file pick", "/home/nlq/ship-boundary/", defaultFilename,
-                        wildcard, wxFD_MULTIPLE);
+        wildcard,wxFD_MULTIPLE);
     if (dialog.ShowModal() == wxID_OK)
     {
         dialog.GetPaths(allpaths);
         int filterIndex = dialog.GetFilterIndex();
     }
-    for (int i = 0; i < allpaths.size(); i++)
+    for(int i = 0; i < allpaths.size(); i++ )
+   {
+    path = allpaths[i];
+    data.open(path);
+    string s;
+    
+    PlugIn_Route *newRouteLine = new PlugIn_Route();
+    
+    while (getline(data, s)) //getline(data,s)是逐行读取data中的文件信息
     {
-        path = allpaths[i];
-        data.open(path);
-        string s;
+        vector<wxString> oneLineRouteData = split(s, "\t"); // number lat_1 lat_2 lon_1 lon_2
+        int number_route = wxAtoi(oneLineRouteData[0]);
+        double lat_1, lat_2, lon_1, lon_2;
+        if (number_route > 0 
+        && oneLineRouteData[1].ToDouble(&lat_1) 
+        && oneLineRouteData[2].ToDouble(&lat_2) 
+        && oneLineRouteData[3].ToDouble(&lon_1) 
+        && oneLineRouteData[4].ToDouble(&lon_2) ){
+            double newLat = lat_1 + lat_2/60.0;
+            double newLon = lon_1 + lon_2/60.0;
+            PlugIn_Waypoint *newWayPoint = new PlugIn_Waypoint(newLat, newLon, "empty", "Line");
 
-        PlugIn_Route *newRouteLine = new PlugIn_Route();
-
-        while (getline(data, s)) //getline(data,s)是逐行读取data中的文件信息
-        {
-            vector<wxString> oneLineRouteData = split(s, "\t"); // number lat_1 lat_2 lon_1 lon_2
-            int number_route = wxAtoi(oneLineRouteData[0]);
-            double lat_1, lat_2, lon_1, lon_2;
-            if (number_route > 0 && oneLineRouteData[1].ToDouble(&lat_1) && oneLineRouteData[2].ToDouble(&lat_2) && oneLineRouteData[3].ToDouble(&lon_1) && oneLineRouteData[4].ToDouble(&lon_2))
-            {
-                double newLat = lat_1 + lat_2 / 60.0;
-                double newLon = lon_1 + lon_2 / 60.0;
-                PlugIn_Waypoint *newWayPoint = new PlugIn_Waypoint(newLat, newLon, "empty", "Line");
-
-                newRouteLine->pWaypointList->Append(newWayPoint);
-            }
+            newRouteLine->pWaypointList->Append(newWayPoint);
         }
-        data.close();
+    }
+    data.close();
 
-        string::size_type iPos = path.find_last_of('/') + 1;
-        string filename = path.substr(iPos, path.length() - iPos);
-        string name = filename.substr(0, filename.rfind("."));
-        newRouteLine->m_NameString = name;
+    string::size_type iPos = path.find_last_of('/') + 1;
+    string filename = path.substr(iPos, path.length() - iPos);
+    string name = filename.substr(0, filename.rfind("."));
+    newRouteLine->m_NameString = name; 
+    
+    yellowline = ((name =="1-1")||(name =="1-2" )||(name == "1-5")||(name == "1-6")||(name == "2-3")||(name == "2-4")||
+    (name == "2-6")||(name == "2-7")||(name == "4-1")||(name == "4-2")||(name == "4-5")||(name == "4-7")||(name == "4-8")||
+    (name == "4-9")||(name == "4-10")||(name == "5-1")||(name == "5-2")||(name == "7-1")||(name == "7-2")||(name == "9-1")||
+    (name == "9-2")||(name == "9-3")||(name == "9-4")||(name == "10-1")||(name == "11-1")||(name == "11-3"));
 
-        yellowline = ((name == "1-1") || (name == "1-2") || (name == "1-5") || (name == "1-6") || (name == "2-3") || (name == "2-4") ||
-                      (name == "2-6") || (name == "2-7") || (name == "4-1") || (name == "4-2") || (name == "4-5") || (name == "4-7") || (name == "4-8") ||
-                      (name == "4-9") || (name == "4-10") || (name == "5-1") || (name == "5-2") || (name == "7-1") || (name == "7-2") || (name == "9-1") ||
-                      (name == "9-2") || (name == "9-3") || (name == "9-4") || (name == "10-1") || (name == "11-1") || (name == "11-3"));
+    greenline = ((name =="1-3")||(name =="1-7" )||(name == "2-1")||(name == "2-2")||(name == "3-1")||(name == "3-2")||
+    (name == "3-3")||(name == "3-4")||(name == "3-5")||(name == "3-7")||(name == "4-3")||(name == "5-3")||
+    (name == "5-4")||(name == "5-5")||(name == "6-1")||(name == "6-3")||(name == "7-4")||(name == "8-1")||(name == "8-3")||
+    (name == "9-6")||(name == "10-2")||(name == "10-3")||(name == "11-4")||(name == "11-6"));
 
-        greenline = ((name == "1-3") || (name == "1-7") || (name == "2-1") || (name == "2-2") || (name == "3-1") || (name == "3-2") ||
-                     (name == "3-3") || (name == "3-4") || (name == "3-5") || (name == "3-7") || (name == "4-3") || (name == "5-3") ||
-                     (name == "5-4") || (name == "5-5") || (name == "6-1") || (name == "6-3") || (name == "7-4") || (name == "8-1") || (name == "8-3") ||
-                     (name == "9-6") || (name == "10-2") || (name == "10-3") || (name == "11-4") || (name == "11-6"));
+    megentaline = ((name =="隔离1-1")||(name =="隔离1-2" )||(name == "隔离2-1")||(name == "隔离2-2")||(name == "隔离3-1")||
+    (name == "隔离3-2")||(name == "隔离4-1")||(name == "隔离4-2")||(name == "隔离4-3")||(name == "隔离4-4")||(name == "隔离4-6")||
+    (name == "隔离4-7")||(name == "隔离4-8")||(name == "隔离4-9")||(name == "隔离5-1")||(name == "隔离5-2")||(name == "隔离6-1")||(name == "隔离6-2"));
 
-        megentaline = ((name == "gl1-1") || (name == "gl1-2") || (name == "gl2-1") || (name == "gl2-2") || (name == "gl3-1") ||
-                       (name == "gl3-2") || (name == "gl4-1") || (name == "gl4-2") || (name == "gl4-3") || (name == "gl4-4") || (name == "gl4-6") ||
-                       (name == "gl4-7") || (name == "gl4-8") || (name == "gl4-9") || (name == "gl5-1") || (name == "gl5-2") || (name == "gl6-1") || (name == "gl6-2"));
+    if(yellowline)
+    {
+        AddPlugInRoute2(newRouteLine,"DarkCyan",3,wxPENSTYLE_LONG_DASH);
+    }
+    else if(greenline)
+    {
+        AddPlugInRoute2(newRouteLine,"Red",3,wxPENSTYLE_SOLID);
+    }
+    else if(megentaline)
+    {
 
-        if (yellowline)
-        {
-            AddPlugInRoute2(newRouteLine, "DarkCyan", 3, wxPENSTYLE_LONG_DASH);
-        }
-        else if (greenline)
-        {
-            AddPlugInRoute2(newRouteLine, "Red", 3, wxPENSTYLE_SOLID);
-        }
-        else if (megentaline)
-        {
-
-            AddPlugInRoute2(newRouteLine, "DarkRed", 1, wxPENSTYLE_SOLID);
-        }
-        else
-        {
-            AddPlugInRoute2(newRouteLine, "Black", 1, wxPENSTYLE_SOLID);
-        }
-
-        delete newRouteLine;
+        AddPlugInRoute2(newRouteLine,"DarkRed",1,wxPENSTYLE_SOLID);
+    }
+    else
+    {
+        AddPlugInRoute2(newRouteLine,"Black",1,wxPENSTYLE_SOLID);
+    }
+    
+    
+    
+    delete newRouteLine;
     }
     // delete newRouteLine;
 }

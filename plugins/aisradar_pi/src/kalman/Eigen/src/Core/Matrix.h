@@ -1,11 +1,11 @@
-// This file is part of Eigen, a lightweight C++ template library
-// for linear algebra.
+// This file is part of Eigen, a lightweight 轻量级  C++ template library
+// for linear algebra.线性代数
 //
 // Copyright (C) 2006-2010 Benoit Jacob <jacob.benoit.1@gmail.com>
 // Copyright (C) 2008-2009 Gael Guennebaud <gael.guennebaud@inria.fr>
 //
 // This Source Code Form is subject to the terms of the Mozilla
-// Public License v. 2.0. If a copy of the MPL was not distributed
+// Public License v. 2.0. If a copy of the MPL was not distributed 分布式
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #ifndef EIGEN_MATRIX_H
@@ -18,7 +18,7 @@ namespace Eigen {
   *
   * \brief The matrix class, also used for vectors and row-vectors
   *
-  * The %Matrix class is the work-horse for all \em dense (\ref dense "note") matrices and vectors within Eigen.
+  * The %Matrix class is the work-horse 主力 for all \em dense 密集的 (\ref dense "note") matrices and vectors within Eigen.
   * Vectors are matrices with one column, and row-vectors are matrices with one row.
   *
   * The %Matrix class encompasses \em both fixed-size and dynamic-size objects (\ref fixedsize "note").
