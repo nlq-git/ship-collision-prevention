@@ -364,7 +364,7 @@ bool RadarFrame::Create ( wxWindow *parent, aisradar_pi *ppi, wxWindowID id,
     wxBoxSizer *m_buttonBox;
     m_buttonBox = new wxBoxSizer( wxVERTICAL );
     
-    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("Addroute"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
+    m_ConnectOptionButton = new wxButton( panel, connectOptionLinkId, wxT("添加航道"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_ConnectOptionButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5 );
     m_soundButton = new wxButton( panel, soundPlayId, wxT("Open"), wxPoint( -1,-1 ), wxDefaultSize, 0 );
     m_buttonBox->Add( m_soundButton, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 5  );
@@ -1438,7 +1438,8 @@ void RadarFrame::renderRange(wxDC& dc, wxPoint &center, wxSize &size, int radius
     //     dc.DrawText(wxString::Format(_T("%3.1d\u00B0"),(int)(m_Ebl+offset)%360),tx,ty);
     // }
 }
-void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
+void RadarFrame::ReadDataFromFile(wxCommandEvent &event)
+{
     bool yellowline, greenline, megentaline;
     ifstream data;
     wxArrayString allpaths;
@@ -1446,79 +1447,74 @@ void RadarFrame::ReadDataFromFile(wxCommandEvent& event){
     wxString wildcard = wxT("TXT files (*.txt)|*.txt");
     wxString defaultFilename = wxEmptyString;
     wxFileDialog dialog(this, "Test for file pick", "/home/nlq/ship-boundary/", defaultFilename,
-        wildcard,wxFD_MULTIPLE);
+                        wildcard, wxFD_MULTIPLE);
     if (dialog.ShowModal() == wxID_OK)
     {
         dialog.GetPaths(allpaths);
         int filterIndex = dialog.GetFilterIndex();
     }
-    for(int i = 0; i < allpaths.size(); i++ )
-   {
-    path = allpaths[i];
-    data.open(path);
-    string s;
-    
-    PlugIn_Route *newRouteLine = new PlugIn_Route();
-    
-    while (getline(data, s)) //getline(data,s)是逐行读取data中的文件信息
+    for (int i = 0; i < allpaths.size(); i++)
     {
-        vector<wxString> oneLineRouteData = split(s, "\t"); // number lat_1 lat_2 lon_1 lon_2
-        int number_route = wxAtoi(oneLineRouteData[0]);
-        double lat_1, lat_2, lon_1, lon_2;
-        if (number_route > 0 
-        && oneLineRouteData[1].ToDouble(&lat_1) 
-        && oneLineRouteData[2].ToDouble(&lat_2) 
-        && oneLineRouteData[3].ToDouble(&lon_1) 
-        && oneLineRouteData[4].ToDouble(&lon_2) ){
-            double newLat = lat_1 + lat_2/60.0;
-            double newLon = lon_1 + lon_2/60.0;
-            PlugIn_Waypoint *newWayPoint = new PlugIn_Waypoint(newLat, newLon, "empty", "Line");
+        path = allpaths[i];
+        data.open(path);
+        string s;
 
-            newRouteLine->pWaypointList->Append(newWayPoint);
+        PlugIn_Route *newRouteLine = new PlugIn_Route();
+
+        while (getline(data, s)) //getline(data,s)是逐行读取data中的文件信息
+        {
+            vector<wxString> oneLineRouteData = split(s, "\t"); // number lat_1 lat_2 lon_1 lon_2
+            int number_route = wxAtoi(oneLineRouteData[0]);
+            double lat_1, lat_2, lon_1, lon_2;
+            if (number_route > 0 && oneLineRouteData[1].ToDouble(&lat_1) && oneLineRouteData[2].ToDouble(&lat_2) && oneLineRouteData[3].ToDouble(&lon_1) && oneLineRouteData[4].ToDouble(&lon_2))
+            {
+                double newLat = lat_1 + lat_2 / 60.0;
+                double newLon = lon_1 + lon_2 / 60.0;
+                PlugIn_Waypoint *newWayPoint = new PlugIn_Waypoint(newLat, newLon, "empty", "Line");
+
+                newRouteLine->pWaypointList->Append(newWayPoint);
+            }
         }
-    }
-    data.close();
+        data.close();
 
-    string::size_type iPos = path.find_last_of('/') + 1;
-    string filename = path.substr(iPos, path.length() - iPos);
-    string name = filename.substr(0, filename.rfind("."));
-    newRouteLine->m_NameString = name; 
-    
-    yellowline = ((name =="1-1")||(name =="1-2" )||(name == "1-5")||(name == "1-6")||(name == "2-3")||(name == "2-4")||
-    (name == "2-6")||(name == "2-7")||(name == "4-1")||(name == "4-2")||(name == "4-5")||(name == "4-7")||(name == "4-8")||
-    (name == "4-9")||(name == "4-10")||(name == "5-1")||(name == "5-2")||(name == "7-1")||(name == "7-2")||(name == "9-1")||
-    (name == "9-2")||(name == "9-3")||(name == "9-4")||(name == "10-1")||(name == "11-1")||(name == "11-3"));
+        string::size_type iPos = path.find_last_of('/') + 1;
+        string filename = path.substr(iPos, path.length() - iPos);
+        string name = filename.substr(0, filename.rfind("."));
+        newRouteLine->m_NameString = name;
 
-    greenline = ((name =="1-3")||(name =="1-7" )||(name == "2-1")||(name == "2-2")||(name == "3-1")||(name == "3-2")||
-    (name == "3-3")||(name == "3-4")||(name == "3-5")||(name == "3-7")||(name == "4-3")||(name == "5-3")||
-    (name == "5-4")||(name == "5-5")||(name == "6-1")||(name == "6-3")||(name == "7-4")||(name == "8-1")||(name == "8-3")||
-    (name == "9-6")||(name == "10-2")||(name == "10-3")||(name == "11-4")||(name == "11-6"));
+        yellowline = ((name == "1-1") || (name == "1-2") || (name == "1-5") || (name == "1-6") || (name == "2-3") || (name == "2-4") ||
+                      (name == "2-6") || (name == "2-7") || (name == "4-1") || (name == "4-2") || (name == "4-5") || (name == "4-7") || (name == "4-8") ||
+                      (name == "4-9") || (name == "4-10") || (name == "5-1") || (name == "5-2") || (name == "7-1") || (name == "7-2") || (name == "9-1") ||
+                      (name == "9-2") || (name == "9-3") || (name == "9-4") || (name == "10-1") || (name == "11-1") || (name == "11-3"));
 
-    megentaline = ((name =="隔离1-1")||(name =="隔离1-2" )||(name == "隔离2-1")||(name == "隔离2-2")||(name == "隔离3-1")||
-    (name == "隔离3-2")||(name == "隔离4-1")||(name == "隔离4-2")||(name == "隔离4-3")||(name == "隔离4-4")||(name == "隔离4-6")||
-    (name == "隔离4-7")||(name == "隔离4-8")||(name == "隔离4-9")||(name == "隔离5-1")||(name == "隔离5-2")||(name == "隔离6-1")||(name == "隔离6-2"));
+        greenline = ((name == "1-3") || (name == "1-7") || (name == "2-1") || (name == "2-2") || (name == "3-1") || (name == "3-2") ||
+                     (name == "3-3") || (name == "3-4") || (name == "3-5") || (name == "3-7") || (name == "4-3") || (name == "5-3") ||
+                     (name == "5-4") || (name == "5-5") || (name == "6-1") || (name == "6-3") || (name == "7-4") || (name == "8-1") || (name == "8-3") ||
+                     (name == "9-6") || (name == "10-2") || (name == "10-3") || (name == "11-4") || (name == "11-6"));
 
-    if(yellowline)
-    {
-        AddPlugInRoute2(newRouteLine,"DarkCyan",3,wxPENSTYLE_LONG_DASH);
-    }
-    else if(greenline)
-    {
-        AddPlugInRoute2(newRouteLine,"Red",3,wxPENSTYLE_SOLID);
-    }
-    else if(megentaline)
-    {
+        megentaline = ((name == "gl1-1") || (name == "gl1-2") || (name == "gl2-1") || (name == "gl2-2") || (name == "gl3-1") ||
+                       (name == "gl3-2") || (name == "gl4-1") || (name == "gl4-2") || (name == "gl4-3") || (name == "gl4-4") || (name == "gl4-6") ||
+                       (name == "gl4-7") || (name == "gl4-8") || (name == "gl4-9") || (name == "gl5-1") || (name == "gl5-2") || (name == "gl6-1") || (name == "gl6-2"));
 
-        AddPlugInRoute2(newRouteLine,"DarkRed",1,wxPENSTYLE_SOLID);
-    }
-    else
-    {
-        AddPlugInRoute2(newRouteLine,"Black",1,wxPENSTYLE_SOLID);
-    }
-    
-    
-    
-    delete newRouteLine;
+        if (yellowline)
+        {
+            AddPlugInRoute2(newRouteLine, "DarkCyan", 3, wxPENSTYLE_LONG_DASH);
+        }
+        else if (greenline)
+        {
+            AddPlugInRoute2(newRouteLine, "Red", 3, wxPENSTYLE_SOLID);
+        }
+        else if (megentaline)
+        {
+
+            AddPlugInRoute2(newRouteLine, "DarkRed", 1, wxPENSTYLE_SOLID);
+        }
+        else
+        {
+            AddPlugInRoute2(newRouteLine, "Black", 1, wxPENSTYLE_SOLID);
+        }
+
+        delete newRouteLine;
     }
     // delete newRouteLine;
 }
